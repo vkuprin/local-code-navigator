@@ -1,0 +1,20 @@
+{
+  "name": "vkuprin-tools",
+  "interface": {
+    "displayName": "Vitaly Kuprin Tools"
+  },
+  "plugins": [
+    {
+      "name": "local-code-navigator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/local-code-navigator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "local-code-navigator",
+  "displayName": "Local Code Navigator",
+  "version": "1.1.0",
+  "description": "Semantic discovery, symbol-aware navigation, and safe refactors for local codebases.",
+  "author": {
+    "name": "Vitaly Kuprin",
+    "url": "https://github.com/vkuprin"
+  },
+  "homepage": "https://github.com/vkuprin/local-code-navigator",
+  "repository": "https://github.com/vkuprin/local-code-navigator",
+  "license": "MIT",
+  "keywords": [
+    "code-navigation",
+    "code-search",
+    "mcp",
+    "semantic-search",
+    "serena",
+    "semble"
+  ],
+  "mcpServers": "./.mcp.claude.json"
+}

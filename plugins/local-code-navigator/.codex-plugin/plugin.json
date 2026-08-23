@@ -1,0 +1,40 @@
+{
+  "name": "local-code-navigator",
+  "version": "1.1.0",
+  "description": "Semantic discovery, symbol-aware navigation, and safe refactors for local codebases.",
+  "author": {
+    "name": "Vitaly Kuprin",
+    "url": "https://github.com/vkuprin"
+  },
+  "homepage": "https://github.com/vkuprin/local-code-navigator",
+  "repository": "https://github.com/vkuprin/local-code-navigator",
+  "license": "MIT",
+  "keywords": [
+    "code-navigation",
+    "code-search",
+    "mcp",
+    "semantic-search",
+    "serena",
+    "semble"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Local Code Navigator",
+    "shortDescription": "Semantic discovery and symbol-aware navigation for local codebases",
+    "longDescription": "Find behavior with Semble, verify symbols and references with Serena, and route literal searches and known-file reasoning to the coding agent's built-in tools.",
+    "developerName": "Vitaly Kuprin",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/vkuprin/local-code-navigator",
+    "defaultPrompt": [
+      "Find where this behavior is implemented and trace its real references.",
+      "Safely rename this symbol and update its references."
+    ],
+    "brandColor": "#4F46E5",
+    "screenshots": []
+  }
+}

@@ -1,0 +1,26 @@
+description: Balanced symbolic navigation for Claude Code with one preactivated project
+prompt: |
+  You are running in Claude Code, which already provides file reading, literal search,
+  file discovery, shell, and small line-based editing tools.
+
+  Use Serena for questions that require code intelligence: symbol overviews and bodies,
+  declarations, implementations, real references, diagnostics, symbol renames, and
+  whole-symbol edits. Use Claude Code's built-in tools for literal text search, file
+  discovery, reading and reasoning about a known file, and small inline changes.
+
+  Choose the narrowest tool that matches the question. A name-based text search is not
+  a semantic reference check. For architecture tracing, semantic discovery may identify
+  likely endpoints, but Serena references should confirm the actual relationships.
+
+excluded_tools:
+  - create_text_file
+  - read_file
+  - execute_shell_command
+  - find_file
+  - list_dir
+  - search_for_pattern
+
+tool_description_overrides: {}
+
+single_project: true
+structured_tool_output: false

@@ -10,7 +10,7 @@
         "serena",
         "start-mcp-server",
         "--context",
-        "claude-code",
+        "${CLAUDE_PLUGIN_ROOT}/contexts/claude-balanced.yml",
         "--project",
         "${CLAUDE_PROJECT_DIR}",
         "--enable-web-dashboard",
@@ -20,15 +20,13 @@
       ]
     },
     "semble": {
-      "command": "uvx",
+      "command": "uv",
       "args": [
+        "run",
         "--python",
         "3.12",
-        "--from",
-        "semble[mcp]==0.5.2",
-        "semble",
-        "--content",
-        "all"
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/start_semble.py"
       ],
       "env": {
         "HF_HOME": "${CLAUDE_PLUGIN_DATA}/huggingface",
@@ -37,4 +35,3 @@
     }
   }
 }
-
