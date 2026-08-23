@@ -45,7 +45,28 @@ Every case runs in two arms -- `plugin` (the plugin's MCP config plus its guidan
 `baseline` (built-in tools only) -- so each score is reported as a delta, not an
 absolute. A plugin that matches the baseline is not earning its context budget.
 
-## Two things to know before trusting a number
+## Read `route` as a diagnostic, not as a scoreboard
+
+On cases that expect `serena` or `semble`, the baseline arm scores 0% on `route` **by
+construction** -- it has no such tools to choose. A headline like "80% vs 46% routing"
+is therefore mostly restating which arm has MCP servers installed. It says nothing
+about judgment.
+
+The comparisons that do carry information:
+
+- **calls** -- both arms can reach the answer; how much wandering did it take
+- **evidence** and **judged** -- was the answer actually right, and did it avoid the
+  claim it must not make
+- **route on the `builtin` cases** -- this is the over-routing check, and it is the one
+  place a plugin can genuinely *lose*. A plugin that drags a single-known-file question
+  through symbolic tooling is worse than no plugin.
+
+`tool` (did the expected tool get used at all) is reported next to `route` (was it used
+*first*) because they diverge for good reasons. Opening the file that names a symbol
+before looking up its references is sensible, and first-call-only scoring records that
+as a miss.
+
+## Three things to know before trusting a number
 
 **Semantic assertions need a judge, not a substring.** The reference-check case has a
 same-name decoy, `LegacyBiller.charge`. Presenting it as a reference is the failure the
@@ -56,7 +77,14 @@ until the grader replaced it. `judge_assertions` exist for this class of check.
 **One run is noise.** The reference-check case has been observed taking 1 call and 13
 calls on the same arm, and flipping which arm cited better evidence. Use `--runs 3` or
 more and read the aggregate; a single trial cannot distinguish a routing regression
-from model variance.
+from model variance. A single run once showed the baseline making a prohibited claim
+where the plugin did not; across three runs both arms were clean. The single run was
+the outlier, and reporting it would have overstated the plugin.
+
+**A truncated run is missing data, not a loss.** `--max-turns` is set to double the
+case budget plus headroom, because the baseline arm legitimately needs more calls and
+an arm cut off mid-task reports as an error. Budget adherence is scored separately from
+being allowed to finish.
 
 ## Fidelity caveat
 

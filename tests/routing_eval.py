@@ -101,7 +101,10 @@ def run_case(case: dict, arm: str, model: str, mcp_config: Path,
         "claude", "-p", case["prompt"], "--bare",
         "--output-format", "stream-json", "--verbose",
         "--model", model,
-        "--max-turns", str(case.get("max_tool_calls", 8) + 4),
+        # Generous headroom on purpose. The baseline arm often needs more calls than
+        # the plugin arm, and truncating it produces missing data that looks like a
+        # loss. Budget adherence is scored separately from being allowed to finish.
+        "--max-turns", str(case.get("max_tool_calls", 8) * 2 + 6),
         "--strict-mcp-config",
     ]
     if arm == "plugin":
@@ -297,8 +300,8 @@ def main() -> int:
     for r in results:
         agg[(r["arm"], "all")].append(r)
 
-    header = (f"  {'arm':9s} {'route':>7s} {'evidence':>9s} {'claims':>7s} "
-              f"{'judged':>7s} {'budget':>7s} {'calls':>6s}")
+    header = (f"  {'arm':9s} {'route':>7s} {'tool':>6s} {'evidence':>9s} "
+              f"{'claims':>7s} {'judged':>7s} {'budget':>7s} {'calls':>6s}")
     print(header)
     summary = {}
     for arm in arms:
@@ -313,19 +316,23 @@ def main() -> int:
             "claims": sum(r["claims_clean"] for r in rows) / n,
             "budget": sum(r["within_budget"] for r in rows) / n,
             "calls": sum(r["calls"] for r in rows) / n,
+            "tool_used": sum(r["used_expected_tools"] for r in rows) / n,
         }
         judged_rows = [r for r in rows if r.get("judged_clean") is not None]
         stats["judged"] = (sum(r["judged_clean"] for r in judged_rows) / len(judged_rows)
                            if judged_rows else float("nan"))
         summary[arm] = stats
         judged = "n/a" if stats["judged"] != stats["judged"] else f"{stats['judged']:.0%}"
-        print(f"  {arm:9s} {stats['route']:>7.0%} {stats['evidence']:>9.0%} "
-              f"{stats['claims']:>7.0%} {judged:>7s} {stats['budget']:>7.0%} "
-              f"{stats['calls']:>6.1f}")
+        print(f"  {arm:9s} {stats['route']:>7.0%} {stats['tool_used']:>6.0%} "
+              f"{stats['evidence']:>9.0%} {stats['claims']:>7.0%} {judged:>7s} "
+              f"{stats['budget']:>7.0%} {stats['calls']:>6.1f}")
 
     if "plugin" in summary and "baseline" in summary:
         print("\n  ablation delta (plugin - baseline):")
-        for key in ("route", "evidence", "claims", "judged", "budget"):
+        print("  NOTE: on cases expecting serena or semble the baseline scores 0% on")
+        print("  route by construction -- it has no such tools to choose. Read route")
+        print("  as a plugin-arm diagnostic; compare arms on calls, evidence and judged.")
+        for key in ("route", "tool_used", "evidence", "claims", "judged", "budget"):
             if summary["plugin"][key] != summary["plugin"][key]:
                 continue
             d = summary["plugin"][key] - summary["baseline"][key]
