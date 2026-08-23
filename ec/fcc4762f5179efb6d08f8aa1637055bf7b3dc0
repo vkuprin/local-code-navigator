@@ -1,0 +1,27 @@
+.claude-plugin/marketplace.json
+  s_442819185a13d6::t_bf2d2419e7c69b 4,15
+README.md
+  s_442819185a13d6::t_bf2d2419e7c69b 1,3
+plugins/serena-semble/README.md
+  s_442819185a13d6::t_bf2d2419e7c69b 1
+CHANGELOG.md
+  s_442819185a13d6::t_bf2d2419e7c69b 5-8
+plugins/serena-semble/.claude-plugin/plugin.json
+  s_442819185a13d6::t_bf2d2419e7c69b 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ecfcc4762f5179efb6d08f8aa1637055bf7b3dc0",
+  "prompts": {},
+  "sessions": {
+    "s_442819185a13d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02e9e-0f11-7d11-8f05-c30f471b6c89",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
