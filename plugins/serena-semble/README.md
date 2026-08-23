@@ -1,4 +1,4 @@
-# Serena + Semble Claude Code plugin
+# Local Code Navigator Claude Code plugin
 
 Optional, all-or-nothing code-navigation tooling for Claude Code. Installing the plugin contributes:
 
@@ -70,4 +70,3 @@ serena start-mcp-server \
 ```
 
 The shared server avoids duplicate language servers but must be started and monitored separately.
-

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "vkuprin-tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claude Code development plugins maintained by Vitaly Kuprin.",
   "owner": {
     "name": "Vitaly Kuprin",
@@ -12,7 +12,7 @@
       "name": "serena-semble",
       "source": "./plugins/serena-semble",
       "description": "Portable Serena symbol intelligence plus Semble semantic search and measured navigation guidance.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Vitaly Kuprin",
         "url": "https://github.com/vkuprin"
@@ -28,4 +28,3 @@
     }
   ]
 }
-

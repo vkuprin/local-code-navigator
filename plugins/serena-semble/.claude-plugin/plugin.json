@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "serena-semble",
-  "displayName": "Serena + Semble Code Navigation",
-  "version": "1.0.0",
+  "displayName": "Local Code Navigator",
+  "version": "1.0.1",
   "description": "Portable Serena symbol intelligence plus Semble semantic search and measured navigation guidance.",
   "author": {
     "name": "Vitaly Kuprin",
@@ -17,4 +17,3 @@
     "semble"
   ]
 }
-

@@ -1,6 +1,6 @@
-# Serena + Semble for Claude Code
+# Local Code Navigator for Claude Code
 
-A portable Claude Code plugin that pairs two complementary local code-navigation tools:
+A portable Claude Code plugin powered by two complementary local code-navigation tools:
 
 - [Serena](https://github.com/oraios/serena) for symbol lookup, references, diagnostics, and symbolic edits.
 - [Semble](https://github.com/MinishLab/semble) for semantic search when you know the behavior but not the symbol name.
@@ -100,4 +100,3 @@ plugins/serena-semble/
 ## License
 
 This plugin is released under the [MIT License](LICENSE). Serena and Semble are separate upstream projects distributed under their own licenses.
-
