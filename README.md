@@ -98,6 +98,8 @@ The detailed measurement history and reproduction protocol live in [BENCHMARKS.m
 
 The pinned package version and the version a server reports over MCP are different
 numbers. Both are listed because your client shows the second one.
+[COMPATIBILITY.md](COMPATIBILITY.md) records which client, server, OS, and runtime
+combinations are actually tested, and which are merely expected to work.
 
 | Server | Pinned package | Reports itself as |
 |---|---|---|

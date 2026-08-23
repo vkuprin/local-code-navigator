@@ -2,7 +2,10 @@
 
 ## Supported version
 
-Only the latest released plugin version is supported.
+Only the latest released plugin version is supported. The tested client, server,
+operating system, and runtime combinations are listed in
+[COMPATIBILITY.md](COMPATIBILITY.md), including which are covered by CI and which are
+untested.
 
 ## Reporting a vulnerability
 

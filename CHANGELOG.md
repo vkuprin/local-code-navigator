@@ -17,6 +17,10 @@ All notable changes to this project will be documented here.
   version it reports over MCP, and where each client writes model and index caches.
 - Drop routing claims that rested on an unreproducible private benchmark.
 - Ignore `.serena/`, which Serena writes wherever it activates a project.
+- Add `COMPATIBILITY.md`, distinguishing CI-tested, hand-verified, expected, and
+  unsupported combinations, and link it from `README.md` and `SECURITY.md` (issue #3).
+- Add `evals/` -- a redistributable fixture, routing cases, and a runner that scores
+  route, evidence, claims and call budget against a no-plugin baseline (issues #1, #7).
 - Record the decision behind the Semble index lock, with the source-level evidence
   that the cache write is non-atomic and its failures are swallowed (issue #2).
 - Degrade gracefully when the index lock times out instead of raising a raw traceback
