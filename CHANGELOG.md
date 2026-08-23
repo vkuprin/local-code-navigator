@@ -17,6 +17,8 @@ All notable changes to this project will be documented here.
   version it reports over MCP, and where each client writes model and index caches.
 - Drop routing claims that rested on an unreproducible private benchmark.
 - Ignore `.serena/`, which Serena writes wherever it activates a project.
+- Ship a `PreToolUse` routing reminder hook that advises once per session rather than
+  blocking, with opt-in `block` enforcement via `LCN_ROUTING_HOOK`.
 - Add `COMPATIBILITY.md`, distinguishing CI-tested, hand-verified, expected, and
   unsupported combinations, and link it from `README.md` and `SECURITY.md` (issue #3).
 - Add `evals/` -- a redistributable fixture, routing cases, and a runner that scores

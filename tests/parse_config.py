@@ -90,6 +90,34 @@ def check_mcp_references() -> None:
                       f"missing {PLUGIN / candidate}")
 
 
+def check_hooks() -> None:
+    """A hook manifest naming a script that is not there would fail silently."""
+    print("\n[hooks]")
+    manifest = PLUGIN / "hooks" / "hooks.json"
+    if not manifest.exists():
+        check("hooks manifest present", False, f"missing {manifest}")
+        return
+    data = json.loads(manifest.read_text())
+    check("hooks manifest parses", True)
+    commands = [h["command"]
+                for entries in data.get("hooks", {}).values()
+                for entry in entries
+                for h in entry.get("hooks", [])
+                if h.get("command")]
+    check("hooks declare at least one command", bool(commands))
+    for cmd in commands:
+        rel = cmd.replace("${CLAUDE_PLUGIN_ROOT}/", "")
+        target = PLUGIN / rel
+        check(f"hook script exists: {rel}", target.exists(), f"missing {target}")
+        if target.exists():
+            check(f"hook script is executable: {rel}", target.stat().st_mode & 0o111 != 0)
+
+    for name, key in ((".claude-plugin/plugin.json", "hooks"),
+                      (".codex-plugin/plugin.json", "hooks")):
+        d = json.loads((PLUGIN / name).read_text())
+        check(f"{name} declares hooks", key in d, "hook manifest would not be loaded")
+
+
 def check_pins_agree() -> None:
     """The launcher and its contract test must pin the same Semble version."""
     print("\n[version pins]")
@@ -124,6 +152,7 @@ def main() -> int:
     parse_contexts()
     parse_skill()
     check_mcp_references()
+    check_hooks()
     check_pins_agree()
     check_marketplaces()
 

@@ -147,6 +147,22 @@ uvx --python 3.12 --from serena-agent==1.7.0 \
 
 This alternative does not install Semble or the `navigate-code` skill.
 
+## Routing reminder hook
+
+The plugin ships a `PreToolUse` hook that states the routing preference once per
+session and then stays out of the way. It never blocks by default, because a plugin
+that disables your built-in search the moment it is installed breaks legitimate
+work -- reading a lockfile, searching a log -- that the routing argument says nothing
+about.
+
+| `LCN_ROUTING_HOOK` | Behavior |
+|---|---|
+| unset or `remind` | One short reminder on the first discovery call of a session. Always allows. |
+| `off` | Silent. |
+| `block` | Refuses `Grep`/`Glob` and shell search, for maintainers who have already decided. |
+
+In `block` mode, prefix a shell command with `MCP_FALLBACK=1` to run it anyway.
+
 ## Running the checks
 
 No credentials, model calls, or authenticated session are required.
@@ -155,6 +171,7 @@ No credentials, model calls, or authenticated session are required.
 uv run --python 3.12 --script tests/parse_config.py       # manifests and cross-references
 uv run --python 3.12 --script tests/semble_api_contract.py # pinned private Semble API
 python3 tests/mcp_contract.py                              # real MCP tool surface
+python3 tests/hook_contract.py                             # hook nudges, never overreaches
 claude plugin validate plugins/local-code-navigator --strict
 claude plugin validate . --strict
 ```
@@ -177,6 +194,8 @@ plugins/local-code-navigator/
 ├── .mcp.json
 ├── contexts/claude-balanced.yml
 ├── contexts/codex-balanced.yml
+├── hooks/hooks.json
+├── hooks/routing_reminder.py
 ├── scripts/start_semble.py
 └── skills/navigate-code/SKILL.md
 tests/                                 # manifest, MCP tool-surface, and API contracts

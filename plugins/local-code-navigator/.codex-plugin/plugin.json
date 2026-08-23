@@ -36,5 +36,6 @@
     ],
     "brandColor": "#4F46E5",
     "screenshots": []
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

@@ -19,5 +19,6 @@
     "serena",
     "semble"
   ],
-  "mcpServers": "./.mcp.claude.json"
+  "mcpServers": "./.mcp.claude.json",
+  "hooks": "./hooks/hooks.json"
 }

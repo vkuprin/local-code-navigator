@@ -28,6 +28,8 @@ jobs:
           enable-cache: true
       - name: Parse every JSON and YAML manifest
         run: uv run --python 3.12 --script tests/parse_config.py
+      - name: Routing hook must nudge without blocking
+        run: python3 tests/hook_contract.py
 
   manifests:
     name: Validate plugin manifests
