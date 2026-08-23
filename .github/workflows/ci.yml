@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Upstream releases, not our commits, are what break the pinned private API.
+    # A weekly run surfaces that drift without waiting for a user to hit it.
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  config:
+    name: Parse configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Parse every JSON and YAML manifest
+        run: uv run --python 3.12 --script tests/parse_config.py
+
+  manifests:
+    name: Validate plugin manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate plugin manifest
+        run: claude plugin validate plugins/local-code-navigator --strict
+      - name: Validate marketplace manifest
+        run: claude plugin validate . --strict
+
+  semble-api:
+    name: Pinned private Semble API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Assert the overridden private API still exists
+        run: uv run --python 3.12 --script tests/semble_api_contract.py
+
+  contracts:
+    name: MCP tool surface (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Cache the Semble embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/lcn-hf
+          key: lcn-hf-${{ runner.os }}-potion-code-16M-v2
+      - name: Assert both clients get the contracted tool surface
+        env:
+          # Keeps the 32 MB model download in a cacheable location across runs.
+          HF_HOME: ~/.cache/lcn-hf
+        run: python3 tests/mcp_contract.py

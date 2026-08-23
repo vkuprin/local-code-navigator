@@ -96,13 +96,36 @@ The detailed measurement history and reproduction protocol live in [BENCHMARKS.m
 
 ## Versions and data
 
-- Serena: `1.7.0`
-- Semble: `0.5.5`
-- File-lock helper: `3.32.4`
-- Python runtime: `3.12`
-- Credentials bundled: none
+The pinned package version and the version a server reports over MCP are different
+numbers. Both are listed because your client shows the second one.
 
-Both servers run locally. Network access is required when `uv` downloads packages and when Semble downloads its embedding model. The Semble launcher serializes writes to each on-disk index so concurrent plugin processes do not publish the same cache at the same time.
+| Server | Pinned package | Reports itself as |
+|---|---|---|
+| Serena | `serena-agent==1.7.0` | `1.28.1` |
+| Semble | `semble[mcp]==0.5.5` | `1.29.0` |
+
+The Semble pin is load-bearing rather than cautious: the launcher overrides a private
+Semble API that was renamed between 0.5.2 and 0.5.5, and the rename is invisible until
+the first search. `tests/semble_api_contract.py` asserts that contract on every CI run.
+
+### Where data is written
+
+| Client | Embedding model | Semble index |
+|---|---|---|
+| Claude Code | `${CLAUDE_PLUGIN_DATA}/huggingface` | `${CLAUDE_PLUGIN_DATA}/semble-cache` |
+| Codex | `~/.cache/huggingface` (default) | `~/Library/Caches/semble` on macOS, `~/.cache/semble` on Linux (default) |
+
+Claude Code exposes a stable per-plugin data directory that survives upgrades and is
+removed on uninstall, so the plugin points both caches at it. Codex's plugin cache is
+version-scoped, so writing caches there would discard them on every upgrade; the
+standard user cache locations are used instead. First start downloads roughly 32 MB of
+embedding model.
+
+Both servers run locally on Python `3.12`, the launcher pins `filelock==3.32.4`, and no
+credentials are bundled. Network access is required when `uv` downloads packages and
+when Semble downloads its embedding model. The Semble launcher serializes writes to each
+on-disk index so concurrent plugin processes do not publish the same cache at the same
+time.
 
 ## Resource usage
 
@@ -122,6 +145,24 @@ uvx --python 3.12 --from serena-agent==1.7.0 \
 
 This alternative does not install Semble or the `navigate-code` skill.
 
+## Running the checks
+
+No credentials, model calls, or authenticated session are required.
+
+```bash
+uv run --python 3.12 --script tests/parse_config.py       # manifests and cross-references
+uv run --python 3.12 --script tests/semble_api_contract.py # pinned private Semble API
+python3 tests/mcp_contract.py                              # real MCP tool surface
+claude plugin validate plugins/local-code-navigator --strict
+claude plugin validate . --strict
+```
+
+`tests/mcp_contract.py` starts each server over stdio exactly as a coding client would
+and asserts the tool surface each client is contracted to receive. It also issues a real
+Semble `search`, which is the only path that reaches the launcher's index lock -- a
+startup-only check would pass while exercising none of this plugin's own code. Pass
+`--skip-search` to skip the index build when iterating locally.
+
 ## Repository layout
 
 ```text
@@ -133,8 +174,10 @@ plugins/local-code-navigator/
 ├── .mcp.claude.json
 ├── .mcp.json
 ├── contexts/claude-balanced.yml
+├── contexts/codex-balanced.yml
 ├── scripts/start_semble.py
 └── skills/navigate-code/SKILL.md
+tests/                                 # manifest, MCP tool-surface, and API contracts
 ```
 
 ## License

@@ -1,2 +1,11 @@
 .DS_Store
 
+# Serena writes per-project state (project.yml, memories, language-server cache)
+# wherever it activates a project. It is local state, not distributable plugin content.
+.serena/
+
+# Semble model and index caches, when a run is pointed at the checkout.
+.semble/
+
+# Byte-code from importing the launcher in tests/semble_api_contract.py.
+__pycache__/

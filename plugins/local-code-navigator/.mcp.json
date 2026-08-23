@@ -10,12 +10,13 @@
         "serena",
         "start-mcp-server",
         "--context",
-        "codex",
+        "./contexts/codex-balanced.yml",
         "--enable-web-dashboard",
         "false",
         "--open-web-dashboard",
         "false"
-      ]
+      ],
+      "cwd": "."
     },
     "semble": {
       "command": "uv",

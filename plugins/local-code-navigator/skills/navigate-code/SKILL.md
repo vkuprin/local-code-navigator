@@ -28,10 +28,15 @@ For architecture tracing, start with Semble to locate likely endpoints, then use
 - Verify arithmetic and aggregates yourself. Structured tool output does not guarantee correct derived totals.
 - Fewer tool calls improve efficiency but do not independently prove correctness.
 
-## Measured trade-off
+## Where each route wins
 
-Use Serena for reference checks, implementations, and renames. In testing, symbolic reference lookup required substantially fewer tool calls than name-based search, although both reached the same conclusion.
+Use Serena for reference checks, implementations, and renames. A symbolic reference
+lookup answers "who actually calls this" directly, where a name-based search returns
+every same-name occurrence and leaves you to sort real references from coincidence.
 
-For read-and-reason tasks, built-in file reading and literal search were cheaper and more accurate. Use Serena for code intelligence, not for every code question.
+Use built-in file reading and literal search for reasoning about a file you can already
+name. Routing those through a symbolic tool adds calls without adding certainty. Serena
+is for code intelligence, not for every code question.
 
-The benchmark history belongs in the repository's `BENCHMARKS.md`, not in these reusable agent instructions.
+Measurement history and the reproduction protocol live in the repository's
+`BENCHMARKS.md`, not in these reusable agent instructions.

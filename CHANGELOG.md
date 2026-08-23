@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented here.
 
+## Unreleased
+
+- Add `contexts/codex-balanced.yml` so Codex and Claude Code exclude the same
+  client-owned tools instead of receiving mirror-image tool surfaces.
+- Point the Codex MCP config at the balanced context and document that its relative
+  paths resolve against the plugin root.
+- Add `tests/` with three checks that need no credentials: manifest and
+  cross-reference parsing, the pinned private Semble API contract, and a real MCP
+  tool-surface assertion that includes an index-building `search`.
+- Add CI covering both plugin manifests, both Serena contexts, the Semble launcher,
+  and weekly upstream drift.
+- Document the difference between each server's pinned package version and the
+  version it reports over MCP, and where each client writes model and index caches.
+- Drop routing claims that rested on an unreproducible private benchmark.
+- Ignore `.serena/`, which Serena writes wherever it activates a project.
+
 ## 1.1.0 - 2026-08-24
 
 - Rename the public package and install ID to `Local Code Navigator` / `local-code-navigator`.
