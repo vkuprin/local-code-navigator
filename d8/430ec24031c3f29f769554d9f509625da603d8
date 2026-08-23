@@ -1,0 +1,32 @@
+.claude-plugin/marketplace.json
+  h_f501021608ac5b 1-31
+.gitignore
+  h_f501021608ac5b 1-2
+CHANGELOG.md
+  h_f501021608ac5b 1-10
+LICENSE
+  h_f501021608ac5b 1-22
+README.md
+  h_f501021608ac5b 1-103
+SECURITY.md
+  h_f501021608ac5b 1-16
+plugins/serena-semble/.claude-plugin/plugin.json
+  h_f501021608ac5b 1-20
+plugins/serena-semble/.mcp.json
+  h_f501021608ac5b 1-40
+plugins/serena-semble/README.md
+  h_f501021608ac5b 1-73
+plugins/serena-semble/skills/navigate-code/SKILL.md
+  h_f501021608ac5b 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d8430ec24031c3f29f769554d9f509625da603d8",
+  "prompts": {},
+  "humans": {
+    "h_f501021608ac5b": {
+      "author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
