@@ -1,0 +1,84 @@
+# Routing regression cases (issue #7) over the redistributable fixture (issue #1).
+#
+# Each case scores four things separately, because they fail independently:
+#   route     -- was the first substantive tool the right kind for this question
+#   evidence  -- did the answer cite what it must cite
+#   claims    -- did the answer avoid a claim it must not make
+#   calls     -- did it get there without wandering
+#
+# expect_first_route is the routing contract under test:
+#   serena  -- symbols, references, implementations, renames
+#   semble  -- behavior described, name unknown
+#   builtin -- literal text, or reasoning about a file already named
+
+- id: reference-check-ambiguous
+  tags: [references, negative]
+  prompt: >-
+    Find every real reference to the `charge` function defined in
+    payments/gateway.py. Give file and line evidence for each one. Do not include
+    functions that merely share the name.
+  expect_first_route: serena
+  expect_tools: [mcp__serena__find_referencing_symbols]
+  must_include: ["checkout.py"]
+  must_exclude: []
+  # LegacyBiller.charge is a same-name decoy. Presenting it as a reference is the
+  # single failure this skill most wants to prevent -- but naming it in order to
+  # exclude it is correct, so this cannot be a substring check.
+  judge_assertions:
+    - assertion: >-
+        The answer presents LegacyBiller.charge (in payments/legacy.py) as a real
+        reference to the charge function from payments/gateway.py. Answer NO if the
+        answer omits it entirely, or names it only to say it is NOT a reference.
+      expect: false
+    - assertion: >-
+        The answer identifies payments/checkout.py as containing references to the
+        charge function.
+      expect: true
+  max_tool_calls: 8
+
+- id: behavior-discovery-unknown-name
+  tags: [discovery]
+  prompt: >-
+    Somewhere in this codebase an operation is attempted again after progressively
+    longer pauses when it fails. Find where that is implemented and name the file
+    and function.
+  expect_first_route: semble
+  expect_tools: [mcp__semble__search]
+  must_include: ["retry.py", "with_backoff"]
+  must_exclude: []
+  max_tool_calls: 8
+
+- id: implementation-trace-cross-file
+  tags: [implementations]
+  prompt: >-
+    What implements the NotificationChannel protocol? List every implementation
+    with its file.
+  expect_first_route: serena
+  expect_tools: []
+  must_include: ["EmailChannel", "SmsChannel", "email.py", "sms.py"]
+  must_exclude: []
+  max_tool_calls: 8
+
+- id: known-file-reasoning
+  tags: [builtin, negative]
+  prompt: >-
+    Read payments/ledger.py and tell me the exact integer returned by
+    closing_balance(6). Show the arithmetic.
+  # The balance case: the plugin must NOT route a single-known-file question
+  # through symbolic tooling. Over-routing is a regression too.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["18200"]
+  must_exclude: []
+  max_tool_calls: 6
+
+- id: literal-string-search
+  tags: [builtin]
+  prompt: >-
+    Which file contains the exact string "cents must be positive"? Answer with the
+    file path only.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["gateway.py"]
+  must_exclude: []
+  max_tool_calls: 5
