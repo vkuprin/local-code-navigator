@@ -1,0 +1,74 @@
+name: Bug
+description: Report incorrect routing, installation, MCP startup, indexing, or navigation behavior.
+title: "fix(scope): short imperative summary"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write the report so a maintainer or coding agent can reproduce it without a scavenger hunt.
+        Prefer exact client versions, commands, tool results, and repository shapes over general impressions.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Lead with the failure mode, where it appears, and why it matters.
+    validations:
+      required: true
+
+  - type: textarea
+    id: consequences
+    attributes:
+      label: Consequences
+      description: List observable fallout such as wrong references, stale results, failed startup, excess calls, or lost edits.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the coding client, plugin version, repository shape, command or prompt, and minimal steps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected versus actual
+      description: A short contrast or table is enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root cause, if known
+      description: Point to the manifest, skill instruction, launcher behavior, or upstream mechanism. Unknown is fine.
+    validations:
+      required: false
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options / proposed fix
+      description: Suggest approaches and trade-offs without treating them as settled design.
+    validations:
+      required: false
+
+  - type: textarea
+    id: edge-cases
+    attributes:
+      label: Edge cases
+      description: Consider cold and warm caches, concurrent agents, monorepos, generated code, operating systems, and both clients.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link logs with secrets removed, related issues, upstream reports, or review threads.
+    validations:
+      required: false

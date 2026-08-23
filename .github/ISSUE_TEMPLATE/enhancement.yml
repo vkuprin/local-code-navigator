@@ -1,0 +1,71 @@
+name: Enhancement
+description: Add a capability or intentionally change Local Code Navigator behavior.
+title: "feat(scope): short imperative summary"
+labels: ["✨ feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Include enough context that implementation can begin without rediscovering the problem.
+        Use `feat(scope): …`, `docs(scope): …`, or `chore(scope): …` as appropriate.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should change, and who or what does it unblock?
+      placeholder: Add a public evaluation corpus so routing claims can be reproduced outside the original private repository.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Describe the current gap, its consequences, and why it matters now.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Outline the implementation shape and affected Claude Code, Codex, Serena, or Semble surfaces.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that make this issue complete.
+      placeholder: |
+        - [ ] The fixture and prompts are versioned
+        - [ ] Results can be reproduced from a clean checkout
+        - [ ] Raw tool-call traces are retained
+    validations:
+      required: true
+
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals / out of scope
+      description: State what this issue deliberately does not attempt to solve.
+    validations:
+      required: false
+
+  - type: textarea
+    id: edge-cases
+    attributes:
+      label: Edge cases
+      description: Note language, platform, client, cache, monorepo, or resource-usage cases that could alter the design.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link related issues, upstream work, benchmarks, reviews, or documentation.
+    validations:
+      required: false

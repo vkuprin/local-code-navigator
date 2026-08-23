@@ -92,7 +92,7 @@ Claude Code deletes its plugin data directory on the final uninstall unless `--k
 
 Semantic discovery and symbolic analysis reinforce each other: use Semble to find likely endpoints, then Serena to verify declarations and real reference relationships. Never present a name-based text search as a reference check.
 
-The detailed measurement history and reproduction protocol live in [BENCHMARKS.md](BENCHMARKS.md), outside the agent instructions.
+The detailed measurement history and reproduction protocol live in [BENCHMARKS.md](BENCHMARKS.md), outside the agent instructions. The product value, principles, and prioritized next steps live in [ROADMAP.md](ROADMAP.md).
 
 ## Versions and data
 
