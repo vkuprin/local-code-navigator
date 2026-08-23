@@ -17,6 +17,12 @@ All notable changes to this project will be documented here.
   version it reports over MCP, and where each client writes model and index caches.
 - Drop routing claims that rested on an unreproducible private benchmark.
 - Ignore `.serena/`, which Serena writes wherever it activates a project.
+- Record the decision behind the Semble index lock, with the source-level evidence
+  that the cache write is non-atomic and its failures are swallowed (issue #2).
+- Degrade gracefully when the index lock times out instead of raising a raw traceback
+  after fifteen minutes of silence.
+- Add `tests/concurrent_index.py`, which races N builders against a shared cold cache
+  and checks for swallowed cache-write failures and unparseable cached indexes.
 
 ## 1.1.0 - 2026-08-24
 
