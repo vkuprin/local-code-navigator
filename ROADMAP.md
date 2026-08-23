@@ -24,12 +24,12 @@ Shipping the MCP servers and skill together is part of the value. Installation a
 ## Near-term priorities
 
 1. [Make the benchmark claims publicly reproducible](https://github.com/vkuprin/local-code-navigator/issues/1).
-2. [Replace the pinned Semble private-API cache hook with a stable upstream contract](https://github.com/vkuprin/local-code-navigator/issues/2).
-3. [Publish a tested compatibility matrix](https://github.com/vkuprin/local-code-navigator/issues/3).
-4. [Validate both plugin formats and MCP startup continuously](https://github.com/vkuprin/local-code-navigator/issues/4).
-5. [Test installation from clean macOS and Linux environments](https://github.com/vkuprin/local-code-navigator/issues/5).
-6. [Report accuracy, cost, latency, memory, and cold-versus-warm cache behavior](https://github.com/vkuprin/local-code-navigator/issues/6).
-7. [Turn the routing boundary into regression cases for the skill](https://github.com/vkuprin/local-code-navigator/issues/7).
+2. [Turn the routing boundary into regression cases for the skill](https://github.com/vkuprin/local-code-navigator/issues/7).
+3. [Validate both plugin formats and MCP startup continuously](https://github.com/vkuprin/local-code-navigator/issues/4).
+4. [Test installation from clean macOS and Linux environments](https://github.com/vkuprin/local-code-navigator/issues/5).
+5. [Report accuracy, cost, latency, memory, and cold-versus-warm cache behavior](https://github.com/vkuprin/local-code-navigator/issues/6).
+6. [Publish a tested compatibility matrix](https://github.com/vkuprin/local-code-navigator/issues/3).
+7. [Replace the pinned Semble private-API cache hook with a stable upstream contract](https://github.com/vkuprin/local-code-navigator/issues/2).
 
 The implementation backlog is tracked in GitHub issues. This file describes the product direction; individual issues own scope, acceptance criteria, dependencies, and trade-offs.
 
