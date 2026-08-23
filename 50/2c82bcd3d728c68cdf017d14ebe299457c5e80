@@ -1,0 +1,44 @@
+tests/semble_api_contract.py
+  s_b8cf1caab3c8c0::t_29746bfc690948 1-94
+.github/workflows/ci.yml
+  s_b8cf1caab3c8c0::t_d209aa2e181c13 1-25,27,29,31-79
+  s_b8cf1caab3c8c0::t_958d1aa7c75bc8 26,28,30
+plugins/local-code-navigator/skills/navigate-code/SKILL.md
+  s_b8cf1caab3c8c0::t_cea5aed34120b6 31,33-35,37-39,41-42
+README.md
+  s_b8cf1caab3c8c0::t_1c8b7a50b8fcf9 99-100,102-122,177,180
+  s_b8cf1caab3c8c0::t_db243af67d6350 124-128
+  s_b8cf1caab3c8c0::t_928e7990369b8a 123
+  s_b8cf1caab3c8c0::t_add108832e8bf6 148-165
+.gitignore
+  s_b8cf1caab3c8c0::t_e22530063df24b 3-8
+  s_b8cf1caab3c8c0::t_27af19954883c9 9-11
+tests/parse_config.py
+  s_b8cf1caab3c8c0::t_ea4c9d1ff3e652 1-140
+tests/mcp_contract.py
+  s_b8cf1caab3c8c0::t_2532d114e1d0d5 19,55-61,68-72,74-76,78-96,98-108,110
+  s_b8cf1caab3c8c0::t_c0c935f78abc0a 1-18,20-54,62-67,73,77,97,109,111-125,128-138,145-205,210-223
+  s_b8cf1caab3c8c0::t_7c51325f3dc337 126-127,139-144,206-209
+CHANGELOG.md
+  s_b8cf1caab3c8c0::t_add108832e8bf6 5-20
+plugins/local-code-navigator/.mcp.json
+  s_b8cf1caab3c8c0::t_4bd9f405d38fe7 13,18-19
+plugins/local-code-navigator/contexts/codex-balanced.yml
+  s_b8cf1caab3c8c0::t_dcd86057c4b9c6 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "502c82bcd3d728c68cdf017d14ebe299457c5e80",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
