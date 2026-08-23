@@ -1,0 +1,28 @@
+.github/ISSUE_TEMPLATE/enhancement.yml
+  s_442819185a13d6::t_bbfba2ab96b454 1-71
+ROADMAP.md
+  s_442819185a13d6::t_bbfba2ab96b454 1-25,33-41
+  s_442819185a13d6::t_b6313ea5fdf1af 26-32
+.github/ISSUE_TEMPLATE/bug.yml
+  s_442819185a13d6::t_bbfba2ab96b454 1-74
+README.md
+  s_442819185a13d6::t_bbfba2ab96b454 95
+.github/ISSUE_TEMPLATE/config.yml
+  s_442819185a13d6::t_bbfba2ab96b454 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0b52d05cf252509cb6f6bda3141b1d099b171c78",
+  "prompts": {},
+  "sessions": {
+    "s_442819185a13d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02e9e-0f11-7d11-8f05-c30f471b6c89",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
