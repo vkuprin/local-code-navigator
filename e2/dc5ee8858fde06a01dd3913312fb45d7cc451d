@@ -1,0 +1,46 @@
+tests/routing_eval.py
+  s_b8cf1caab3c8c0::t_54bef336c2173a 181-190,193,203,205-206,209,214-215
+  s_b8cf1caab3c8c0::t_ef594d973c3666 167,217-221
+  s_b8cf1caab3c8c0::t_bcfc17611e0c23 146-166,168-180,191,216,233-235,268-276,288-290
+  s_b8cf1caab3c8c0::t_fd975a62fdc29b 300-301,317-319,321,323-324,328-330
+  s_b8cf1caab3c8c0::t_81ff78682af00d 1-145,192,194-202,204,207-208,210-213,222-232,236-267,277-287,291-299,302-316,320,322,325-327,331-346
+evals/cases.yaml
+  s_b8cf1caab3c8c0::t_fd975a62fdc29b 23-36
+  s_b8cf1caab3c8c0::t_1803408563ca50 1-22,37-84
+evals/README.md
+  s_b8cf1caab3c8c0::t_ef991cd2ad31ff 1-67
+evals/fixture/README.md
+  s_b8cf1caab3c8c0::t_fae11b5dd85390 1-16
+evals/fixture/notifications/channel.py
+  s_b8cf1caab3c8c0::t_efea70fdb5de2f 1-8
+evals/fixture/notifications/email.py
+  s_b8cf1caab3c8c0::t_82a261aafef3e1 1-6
+evals/fixture/notifications/sms.py
+  s_b8cf1caab3c8c0::t_06c4b1976790e4 1-6
+evals/fixture/payments/checkout.py
+  s_b8cf1caab3c8c0::t_014f5f369c120e 1-12
+evals/fixture/payments/gateway.py
+  s_b8cf1caab3c8c0::t_e9a358964390c5 1-12
+evals/fixture/payments/ledger.py
+  s_b8cf1caab3c8c0::t_f955b0d721a6aa 1-15
+evals/fixture/payments/legacy.py
+  s_b8cf1caab3c8c0::t_7a96bfd733a09c 1-16
+evals/fixture/payments/retry.py
+  s_b8cf1caab3c8c0::t_c209483cb3b55f 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e2dc5ee8858fde06a01dd3913312fb45d7cc451d",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
