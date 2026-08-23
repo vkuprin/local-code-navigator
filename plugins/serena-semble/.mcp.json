@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.12",
+        "--from",
+        "serena-agent==1.7.0",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude-code",
+        "--project",
+        "${CLAUDE_PROJECT_DIR}",
+        "--enable-web-dashboard",
+        "false",
+        "--open-web-dashboard",
+        "false"
+      ]
+    },
+    "semble": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.12",
+        "--from",
+        "semble[mcp]==0.5.2",
+        "semble",
+        "--content",
+        "all"
+      ],
+      "env": {
+        "HF_HOME": "${CLAUDE_PLUGIN_DATA}/huggingface",
+        "SEMBLE_CACHE_LOCATION": "${CLAUDE_PLUGIN_DATA}/semble-cache"
+      }
+    }
+  }
+}
+
