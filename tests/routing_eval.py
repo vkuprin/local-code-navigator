@@ -36,6 +36,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -70,6 +71,22 @@ MCP_TOOLS = [
 ROUTE_NEUTRAL = {"ToolSearch", "Skill", "TodoWrite"}
 
 
+def fixture_fingerprint() -> str:
+    """Hash the corpus so a run that mutates it cannot pass silently.
+
+    This is not hypothetical: Serena's project is pinned at server start, so a rename
+    case whose MCP config still pointed at the real fixture rewrote the checked-in
+    corpus while a benchmark was in flight. Ground truth silently changing underneath
+    a measurement is the worst failure this suite can have.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(FIXTURE.rglob("*")):
+        if path.is_file():
+            digest.update(str(path.relative_to(FIXTURE)).encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 def route_of(tool: str) -> str:
     if tool.startswith("mcp__serena__"):
         return "serena"
@@ -78,7 +95,8 @@ def route_of(tool: str) -> str:
     return "builtin"
 
 
-def resolved_mcp_config(tmp: Path, context: str | None = None) -> Path:
+def resolved_mcp_config(tmp: Path, context: str | None = None,
+                        project: Path | None = None, tag: str = "") -> Path:
     """Materialize .mcp.claude.json with plugin variables expanded.
 
     `context` swaps Serena's context file. Passing "claude-code" selects Serena's own
@@ -91,10 +109,10 @@ def resolved_mcp_config(tmp: Path, context: str | None = None) -> Path:
     raw = (PLUGIN / ".mcp.claude.json").read_text()
     raw = raw.replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN))
     raw = raw.replace("${CLAUDE_PLUGIN_DATA}", str(data_dir))
-    raw = raw.replace("${CLAUDE_PROJECT_DIR}", str(FIXTURE))
+    raw = raw.replace("${CLAUDE_PROJECT_DIR}", str(project or FIXTURE))
     if context:
         raw = raw.replace(f"{PLUGIN}/contexts/claude-balanced.yml", context)
-    out = tmp / f"mcp-{context or 'plugin'}.json"
+    out = tmp / f"mcp-{tag or context or 'plugin'}.json"
     out.write_text(raw)
     return out
 
@@ -118,6 +136,9 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
         workdir = scratch / "fixture"
         shutil.copytree(FIXTURE, workdir)
         allowed += ["Edit", "Write"]
+        configs = dict(configs)
+        configs["plugin"] = resolved_mcp_config(scratch, project=workdir, tag="plugin")
+        configs["stock"] = resolved_mcp_config(scratch, "claude-code", workdir, "stock")
     cmd = [
         "claude", "-p", case["prompt"], "--bare",
         "--output-format", "stream-json", "--verbose",
@@ -326,6 +347,7 @@ def main() -> int:
         "empty": empty_config,
     }
 
+    fingerprint_before = fixture_fingerprint()
     results = []
     spent = 0.0
     print(f"{len(cases)} cases x {len(arms)} arms x {args.runs} run(s), model={args.model}")
@@ -367,6 +389,13 @@ def main() -> int:
                     if not s["within_budget"]:
                         flags.append(f"{s['calls']} calls over budget")
                 print(f"  {arm:9s} run{run}: {s['calls']} calls  ${s['cost']:.4f}  " + "; ".join(flags))
+
+    if fixture_fingerprint() != fingerprint_before:
+        print("\n*** FIXTURE MUTATED DURING THE RUN ***")
+        print("The corpus changed while it was being measured, so these results are")
+        print("not trustworthy. Restore it with `git checkout -- evals/fixture/` and")
+        print("check that mutating cases point Serena's --project at their scratch copy.")
+        return 3
 
     print(f"\n=== aggregate (spent ${spent:.3f}) ===")
     agg: dict[tuple[str, str], list[dict]] = defaultdict(list)

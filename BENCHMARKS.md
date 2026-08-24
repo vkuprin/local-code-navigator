@@ -30,6 +30,46 @@ plugin that dragged a single-known-file question through symbolic tooling would 
 worse than no plugin. It did not — both arms took exactly one call, and the plugin
 chose a built-in tool 100% of the time when a built-in tool was right.
 
+## Does the custom Serena context earn its keep?
+
+This is the question that decides whether `contexts/claude-balanced.yml` should exist.
+Serena ships its own `claude-code` context that excludes the identical six tools, so
+the only difference between them is prompt wording: Serena's says "Read is FORBIDDEN
+for discovery", this plugin's says to choose the narrowest tool that fits the question.
+
+Three arms, 45 runs, 3 trials per case per arm, $0.63:
+
+| arm | route | tool used | evidence | claims | judged | mean calls |
+|---|---:|---:|---:|---:|---:|---:|
+| plugin — this plugin's context + guidance | **93%** | 100% | 100% | 100% | 100% | **2.4** |
+| stock — Serena's own context, no guidance | 60% | 100% | 100% | 100% | 100% | 3.5 |
+| baseline — no MCP servers | 40% | 60% | 100% | 100% | 100% | 4.9 |
+
+Mean tool calls per case:
+
+| Case | plugin | stock | baseline |
+|---|---:|---:|---:|
+| reference check with a same-name decoy | **3.3** | 7.7 | 15.0 |
+| behavior described, name unknown | **2.0** | 3.3 | 2.3 |
+| implementation trace across files | 4.7 | **4.3** | 5.0 |
+| reasoning about one known file | 1.0 | 1.0 | 1.0 |
+| literal string search | 1.0 | 1.0 | 1.0 |
+
+**Verdict: keep the custom context.** Against stock it routes correctly 93% of the time
+versus 60%, and reaches the same answers in 2.4 calls versus 3.5 — less than half the
+calls on the reference case. Unlike the baseline's zeros, stock's routing misses are
+genuine judgment differences: it has exactly the same tools available and chose
+differently.
+
+Correctness was identical across all three arms on every case. Nothing here says the
+plugin makes answers better. It says the same answers cost less.
+
+Two honest limits on that verdict. The `plugin` arm carries **both** the custom context
+and the navigate-code guidance, so 93% against 60% is their combined effect and this
+does not isolate the context alone — separating them needs a fourth arm. And on
+implementation tracing stock was marginally cheaper (4.3 against 4.7), so the win is not
+uniform across question types.
+
 ## How to read the routing columns
 
 `route` and `tool used` look like large wins and mostly are not. On cases expecting
