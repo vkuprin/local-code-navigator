@@ -1,0 +1,35 @@
+BENCHMARKS.md
+  s_b8cf1caab3c8c0::t_9e3d03ed098f1d 1,3-59,63-67,73-75,77,79-82
+evals/README.md
+  s_b8cf1caab3c8c0::t_730097adab93ee 44-58
+tests/routing_eval.py
+  s_b8cf1caab3c8c0::t_5ebf721c1e8142 76-83,90-92,105-106,120,122-126,128,246-248,272-276,289
+plugins/local-code-navigator/skills/navigate-code/SKILL.md
+  s_b8cf1caab3c8c0::t_c1e2e1e894c611 41-45
+evals/results/routing-haiku-3runs.json
+  s_35851f98c9f17e::t_2f8f316b571814 1-842
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "7fa24494f4c78912af43d134471f9073d33e2781",
+  "prompts": {},
+  "sessions": {
+    "s_35851f98c9f17e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffd1b60a-a87e-406c-b82d-c959cf1e2c8d",
+        "model": "unknown"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    },
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
