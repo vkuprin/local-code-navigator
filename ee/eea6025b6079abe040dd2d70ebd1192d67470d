@@ -1,0 +1,19 @@
+README.md
+  s_b8cf1caab3c8c0::t_7425afac980df5 3-4,6-8,10-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "eeeea6025b6079abe040dd2d70ebd1192d67470d",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
