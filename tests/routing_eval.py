@@ -52,6 +52,8 @@ ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "local-code-navigator"
 EVALS = ROOT / "evals"
 FIXTURE = EVALS / "fixture"
+# Reassigned by main() when --repo targets a real repository.
+CORPUS = FIXTURE
 
 BUILTIN_TOOLS = ["Read", "Grep", "Glob"]
 MCP_TOOLS_WRITE = [
@@ -80,9 +82,9 @@ def fixture_fingerprint() -> str:
     a measurement is the worst failure this suite can have.
     """
     digest = hashlib.sha256()
-    for path in sorted(FIXTURE.rglob("*")):
+    for path in sorted(CORPUS.rglob("*")):
         if path.is_file():
-            digest.update(str(path.relative_to(FIXTURE)).encode())
+            digest.update(str(path.relative_to(CORPUS)).encode())
             digest.update(path.read_bytes())
     return digest.hexdigest()
 
@@ -109,7 +111,7 @@ def resolved_mcp_config(tmp: Path, context: str | None = None,
     raw = (PLUGIN / ".mcp.claude.json").read_text()
     raw = raw.replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN))
     raw = raw.replace("${CLAUDE_PLUGIN_DATA}", str(data_dir))
-    raw = raw.replace("${CLAUDE_PROJECT_DIR}", str(project or FIXTURE))
+    raw = raw.replace("${CLAUDE_PROJECT_DIR}", str(project or CORPUS))
     if context:
         raw = raw.replace(f"{PLUGIN}/contexts/claude-balanced.yml", context)
     out = tmp / f"mcp-{tag or context or 'plugin'}.json"
@@ -128,13 +130,13 @@ def skill_body() -> str:
 def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
              timeout: int) -> dict:
     allowed = list(BUILTIN_TOOLS)
-    workdir = FIXTURE
+    workdir = CORPUS
     scratch: Path | None = None
     if case.get("mutates"):
         # Copy the fixture so an edit cannot leak into the next run or the repository.
         scratch = Path(tempfile.mkdtemp(prefix="lcn-mutate-"))
         workdir = scratch / "fixture"
-        shutil.copytree(FIXTURE, workdir)
+        shutil.copytree(CORPUS, workdir)
         allowed += ["Edit", "Write"]
         configs = dict(configs)
         configs["plugin"] = resolved_mcp_config(scratch, project=workdir, tag="plugin")
@@ -321,6 +323,11 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=420)
     parser.add_argument("--max-cost-usd", type=float, default=5.0)
     parser.add_argument("--judge-model", default="haiku")
+    parser.add_argument("--cases", default=str(EVALS / "cases.yaml"),
+                        help="case definitions to run")
+    parser.add_argument("--repo",
+                        help="run against a real repository instead of the "
+                             "synthetic fixture; mutating cases are refused")
     parser.add_argument("--no-judge", action="store_true",
                         help="skip semantic grading (routing and literal checks only)")
     parser.add_argument("--json", help="write full results here")
@@ -330,7 +337,20 @@ def main() -> int:
         print("ANTHROPIC_API_KEY is required: `claude --bare` never reads OAuth or the keychain.")
         return 2
 
-    cases = yaml.safe_load((EVALS / "cases.yaml").read_text())
+    global CORPUS
+    if args.repo:
+        CORPUS = Path(args.repo).resolve()
+        if not CORPUS.is_dir():
+            print(f"--repo is not a directory: {CORPUS}")
+            return 2
+
+    cases = yaml.safe_load(Path(args.cases).read_text())
+    if args.repo:
+        mutating = [c["id"] for c in cases if c.get("mutates")]
+        if mutating:
+            print(f"refusing to run mutating cases against {CORPUS}: {mutating}")
+            print("Rename cases edit the tree. Run those against the fixture.")
+            return 2
     if args.case:
         cases = [c for c in cases if args.case in c["id"]]
     if not cases:
@@ -347,7 +367,8 @@ def main() -> int:
         "empty": empty_config,
     }
 
-    fingerprint_before = fixture_fingerprint()
+    # Hashing a large repository is slow, and nothing may mutate it anyway.
+    fingerprint_before = None if args.repo else fixture_fingerprint()
     results = []
     spent = 0.0
     print(f"{len(cases)} cases x {len(arms)} arms x {args.runs} run(s), model={args.model}")
@@ -390,7 +411,7 @@ def main() -> int:
                         flags.append(f"{s['calls']} calls over budget")
                 print(f"  {arm:9s} run{run}: {s['calls']} calls  ${s['cost']:.4f}  " + "; ".join(flags))
 
-    if fixture_fingerprint() != fingerprint_before:
+    if fingerprint_before is not None and fixture_fingerprint() != fingerprint_before:
         print("\n*** FIXTURE MUTATED DURING THE RUN ***")
         print("The corpus changed while it was being measured, so these results are")
         print("not trustworthy. Restore it with `git checkout -- evals/fixture/` and")

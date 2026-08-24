@@ -1,0 +1,88 @@
+# Routing cases over a real repository, not the synthetic fixture.
+#
+# Corpus: site-spy's changedetectionio package (~328 Python files). Ground truth was
+# established by AST analysis and exhaustive text scan, and is recorded per case below.
+# Run with:
+#   --cases evals/cases-sitespy.yaml --repo <path>/site-spy/server/changedetectionio
+#
+# The point of this file is to check whether the routing advantage measured on a
+# 9-file synthetic fixture survives contact with a real codebase, where retrieval is
+# noisier and a text search returns many more plausible-looking wrong answers.
+
+- id: real-reference-ambiguous
+  tags: [references, negative]
+  # Ground truth. `send_content_changed_notification` is defined twice and mentioned
+  # five times:
+  #   worker.py:1185               module-level async def   <- the symbol under test
+  #   worker.py:920                await ...(...)           <- THE ONLY REAL REFERENCE
+  #   worker.py:1193               notification_service.send_content_changed_notification(...)
+  #                                  -> a method call on an object, 8 lines below the
+  #                                     definition, in the same file. Not a reference.
+  #   notification_service.py:781  def ...(self, watch_uuid) -> a separate definition
+  #   notification_service.py:471  a comment mentioning the name
+  # A name-based search returns all five. Exactly one is correct.
+  prompt: >-
+    In worker.py there is a module-level async function `send_content_changed_notification`.
+    Find every real reference to that specific function. Give file and line evidence.
+    Do not include same-name methods or unrelated definitions.
+  expect_first_route: serena
+  expect_tools: []
+  must_include: ["worker.py", "920"]
+  must_exclude: []
+  judge_assertions:
+    - assertion: >-
+        The answer presents NotificationService.send_content_changed_notification, defined
+        in notification_service.py, as a real reference to the module-level function in
+        worker.py. Answer NO if it omits it, or names it only to exclude it.
+      expect: false
+    - assertion: >-
+        The answer claims that worker.py line 1193 is a call to the module-level
+        send_content_changed_notification function. It is actually a method call on a
+        notification_service object, so answer YES only if the answer treats it as a
+        reference to the module-level function.
+      expect: false
+    - assertion: >-
+        The answer identifies worker.py line 920 as a call site of the function.
+      expect: true
+  max_tool_calls: 14
+
+- id: real-behavior-discovery
+  tags: [discovery]
+  # Ground truth: content_fetchers/fetch_quality.py :: assess_fetch_quality.
+  # The function name is not guessable from the question, which is the point.
+  prompt: >-
+    A request can succeed at the HTTP level while the page that comes back is not the
+    real content - for example an interstitial challenge page, or a near-empty shell
+    that only works once scripts run. Where in this codebase is that judgement made?
+    Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["fetch_quality", "assess_fetch_quality"]
+  must_exclude: []
+  max_tool_calls: 12
+
+- id: real-known-file-reasoning
+  tags: [builtin, negative]
+  # Ground truth: _clean() returns None for a blank string (`return value or None`),
+  # so env_int falls through to int(default) -> 120. Requires following one helper.
+  prompt: >-
+    Read env_utils.py. If the environment variable MY_VAR is set to an empty string and
+    the code calls env_int('MY_VAR', 120), what integer is returned? Explain which
+    branch produces it.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["120"]
+  must_exclude: []
+  max_tool_calls: 8
+
+- id: real-literal-string
+  tags: [builtin]
+  # Ground truth: exactly one occurrence, env_utils.py:29.
+  prompt: >-
+    Which file contains the exact string "is not a valid integer, using default"?
+    Answer with the file path only.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["env_utils.py"]
+  must_exclude: []
+  max_tool_calls: 6
