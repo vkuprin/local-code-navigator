@@ -1,7 +1,7 @@
 {
   "name": "local-code-navigator",
   "version": "1.1.0",
-  "description": "Semantic discovery, symbol-aware navigation, and safe refactors for local codebases.",
+  "description": "Symbol-aware and semantic code navigation for Claude Code and Codex, plus the ablation harness that measures whether it actually helps.",
   "author": {
     "name": "Vitaly Kuprin",
     "url": "https://github.com/vkuprin"
@@ -15,14 +15,18 @@
     "mcp",
     "semantic-search",
     "serena",
-    "semble"
+    "semble",
+    "mcp-benchmark",
+    "agent-evaluation",
+    "ablation-study",
+    "llm-evaluation"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Local Code Navigator",
-    "shortDescription": "Semantic discovery and symbol-aware navigation for local codebases",
-    "longDescription": "Find behavior with Semble, verify symbols and references with Serena, and route literal searches and known-file reasoning to the coding agent's built-in tools.",
+    "shortDescription": "Code navigation for agents, and the benchmark that tests it",
+    "longDescription": "Semantic and symbol-aware code navigation via Semble and Serena, with a routing rule for when built-in tools are the better answer. Ships the benchmark harness used to measure the routing claim against upstream defaults and against no MCP servers at all.",
     "developerName": "Vitaly Kuprin",
     "category": "Developer Tools",
     "capabilities": [

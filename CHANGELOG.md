@@ -17,6 +17,11 @@ All notable changes to this project will be documented here.
   version it reports over MCP, and where each client writes model and index caches.
 - Drop routing claims that rested on an unreproducible private benchmark.
 - Ignore `.serena/`, which Serena writes wherever it activates a project.
+- Measure the routing claim against a real 330-file snapshot on `sonnet`. It does not
+  hold: 5.1x more context, higher cost, and 1-of-3 correctness on the reference case.
+- Document `tests/routing_eval.py` as a reusable ablation harness for any MCP setup,
+  including the five ways it produced flattering numbers before being fixed.
+- Retag the project as a benchmark as well as a plugin.
 - Ship a `PreToolUse` routing reminder hook that advises once per session rather than
   blocking, with opt-in `block` enforcement via `LCN_ROUTING_HOOK`.
 - Add `COMPATIBILITY.md`, distinguishing CI-tested, hand-verified, expected, and

@@ -3,7 +3,7 @@
   "name": "local-code-navigator",
   "displayName": "Local Code Navigator",
   "version": "1.1.0",
-  "description": "Semantic discovery, symbol-aware navigation, and safe refactors for local codebases.",
+  "description": "Symbol-aware and semantic code navigation for Claude Code and Codex, plus the ablation harness that measures whether it actually helps.",
   "author": {
     "name": "Vitaly Kuprin",
     "url": "https://github.com/vkuprin"
@@ -17,7 +17,11 @@
     "mcp",
     "semantic-search",
     "serena",
-    "semble"
+    "semble",
+    "mcp-benchmark",
+    "agent-evaluation",
+    "ablation-study",
+    "llm-evaluation"
   ],
   "mcpServers": "./.mcp.claude.json",
   "hooks": "./hooks/hooks.json"

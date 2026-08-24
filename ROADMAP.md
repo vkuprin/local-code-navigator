@@ -23,26 +23,35 @@ Shipping the MCP servers and skill together is part of the value. Installation a
 
 ## What is measured
 
-The routing boundary is no longer an assertion. Measured over the public fixture in
-[`evals/`](evals/), 45 runs across three arms:
+The routing claim was tested and **did not hold on a real repository**. 108 runs on
+`sonnet`, two corpora, three arms:
 
-| arm | route | evidence | mean calls |
-|---|---:|---:|---:|
-| this plugin | 93% | 100% | 2.4 |
-| Serena's stock context, no guidance | 60% | 100% | 3.5 |
-| no MCP servers at all | 40% | 100% | 4.9 |
+| corpus | model | plugin calls | baseline calls | plugin context | baseline context |
+|---|---|---:|---:|---:|---:|
+| 9-file fixture | haiku | 1.9 | 5.2 | — | — |
+| 9-file fixture | sonnet | 3.8 | 5.3 | — | — |
+| 330-file snapshot | sonnet | 3.4 | 3.2 | 1,079,404 | 212,886 |
 
-Correctness was identical everywhere. **The plugin does not make answers better; it
-reaches the same answers in fewer steps** — 3.3 calls against 15.0 on a reference check
-with an ambiguous symbol, and exactly 1.0 against 1.0 where a built-in tool is the right
-answer. That last number is the one that justifies the project: a router that dragged
-simple questions through symbolic tooling would be worse than nothing.
+On real code the plugin costs **5.1x more context**, is more expensive, and answered
+its own flagship reference case correctly in 1 of 3 runs. Full numbers and the
+reproduction in [BENCHMARKS.md](BENCHMARKS.md).
 
-See [BENCHMARKS.md](BENCHMARKS.md) for the caveats, which matter more than the headline.
+The one thing that survived is symbolic renaming. Everything else the project was built
+on is not supported by its own measurements.
 
-## Remaining before release
+## What this repository is now for
 
-1. [Verify the Claude Code install from the public marketplace](https://github.com/vkuprin/local-code-navigator/issues/5) — the only real blocker. The plugin has never run *as a plugin* on Claude Code, because direct MCP registrations shadow it.
+The harness outlived the claim it was built to support, and it is the more useful
+artifact. `tests/routing_eval.py` measures any MCP setup against three arms — with your
+guidance, with the tool's upstream defaults, and with no MCP at all — and reports
+routing, correctness, context, cost and wall time separately.
+
+The middle arm is the point. Beating "no tools" is easy. Beating the tool's own defaults
+is the claim worth making, and it is the one almost nobody runs.
+
+## Open
+
+1. [Verify the Claude Code install from the public marketplace](https://github.com/vkuprin/local-code-navigator/issues/5).
 2. [Report a Codex arm for the routing cases](https://github.com/vkuprin/local-code-navigator/issues/7).
 3. [Add process and cache-state metrics](https://github.com/vkuprin/local-code-navigator/issues/6).
 4. [Report the non-atomic index write upstream](https://github.com/vkuprin/local-code-navigator/issues/2).
