@@ -73,15 +73,23 @@ def route_of(tool: str) -> str:
     return "builtin"
 
 
-def resolved_mcp_config(tmp: Path) -> Path:
-    """Materialize .mcp.claude.json with plugin variables expanded."""
+def resolved_mcp_config(tmp: Path, context: str | None = None) -> Path:
+    """Materialize .mcp.claude.json with plugin variables expanded.
+
+    `context` swaps Serena's context file. Passing "claude-code" selects Serena's own
+    stock context instead of this plugin's, which is what isolates the plugin's actual
+    contribution: the two exclude the identical six tools, so the only difference is
+    prompt wording.
+    """
     data_dir = tmp / "plugin-data"
     data_dir.mkdir(parents=True, exist_ok=True)
     raw = (PLUGIN / ".mcp.claude.json").read_text()
     raw = raw.replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN))
     raw = raw.replace("${CLAUDE_PLUGIN_DATA}", str(data_dir))
     raw = raw.replace("${CLAUDE_PROJECT_DIR}", str(FIXTURE))
-    out = tmp / "mcp-plugin.json"
+    if context:
+        raw = raw.replace(f"{PLUGIN}/contexts/claude-balanced.yml", context)
+    out = tmp / f"mcp-{context or 'plugin'}.json"
     out.write_text(raw)
     return out
 
@@ -94,8 +102,8 @@ def skill_body() -> str:
     return text.strip()
 
 
-def run_case(case: dict, arm: str, model: str, mcp_config: Path,
-             empty_config: Path, timeout: int) -> dict:
+def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
+             timeout: int) -> dict:
     allowed = list(BUILTIN_TOOLS)
     cmd = [
         "claude", "-p", case["prompt"], "--bare",
@@ -109,10 +117,15 @@ def run_case(case: dict, arm: str, model: str, mcp_config: Path,
     ]
     if arm == "plugin":
         allowed += MCP_TOOLS + ["ToolSearch"]
-        cmd += ["--mcp-config", str(mcp_config),
+        cmd += ["--mcp-config", str(configs["plugin"]),
                 "--append-system-prompt", skill_body()]
+    elif arm == "stock":
+        # Same servers, Serena's own context, no navigate-code guidance. The delta
+        # between this and `plugin` is the plugin's actual contribution.
+        allowed += MCP_TOOLS + ["ToolSearch"]
+        cmd += ["--mcp-config", str(configs["stock"])]
     else:
-        cmd += ["--mcp-config", str(empty_config)]
+        cmd += ["--mcp-config", str(configs["empty"])]
     cmd += ["--allowed-tools", *allowed]
 
     try:
@@ -230,7 +243,9 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=1, help="runs per case per arm")
     parser.add_argument("--model", default="haiku")
     parser.add_argument("--case", help="only run cases whose id contains this")
-    parser.add_argument("--arms", default="plugin,baseline")
+    parser.add_argument("--arms", default="plugin,baseline",
+                        help="plugin (custom context + skill), stock (Serena's own "
+                             "context, no skill), baseline (no MCP at all)")
     parser.add_argument("--timeout", type=int, default=420)
     parser.add_argument("--max-cost-usd", type=float, default=5.0)
     parser.add_argument("--judge-model", default="haiku")
@@ -252,9 +267,13 @@ def main() -> int:
 
     arms = [a.strip() for a in args.arms.split(",") if a.strip()]
     tmp = Path(tempfile.mkdtemp(prefix="lcn-eval-"))
-    mcp_config = resolved_mcp_config(tmp)
     empty_config = tmp / "mcp-empty.json"
     empty_config.write_text(json.dumps({"mcpServers": {}}))
+    configs = {
+        "plugin": resolved_mcp_config(tmp),
+        "stock": resolved_mcp_config(tmp, "claude-code"),
+        "empty": empty_config,
+    }
 
     results = []
     spent = 0.0
@@ -267,7 +286,7 @@ def main() -> int:
                 if spent >= args.max_cost_usd:
                     print(f"  cost ceiling ${args.max_cost_usd} reached; stopping")
                     break
-                outcome = run_case(case, arm, args.model, mcp_config, empty_config, args.timeout)
+                outcome = run_case(case, arm, args.model, configs, args.timeout)
                 judgements = {}
                 if outcome["answer"] and not args.no_judge:
                     for a in case.get("judge_assertions", []):

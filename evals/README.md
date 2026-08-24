@@ -41,9 +41,21 @@ These fail independently. An answer can be correct by luck after six wrong turns
 an answer can route perfectly and still cite nothing. Collapsing them into one number
 hides exactly the information that would tell you which rule to change.
 
-Every case runs in two arms -- `plugin` (the plugin's MCP config plus its guidance) and
-`baseline` (built-in tools only) -- so each score is reported as a delta, not an
-absolute. A plugin that matches the baseline is not earning its context budget.
+Cases run in up to three arms, selected with `--arms`:
+
+| Arm | Serena context | navigate-code guidance | MCP servers |
+|---|---|---|---|
+| `plugin` | this plugin's `claude-balanced.yml` | yes | yes |
+| `stock` | Serena's own `claude-code` | no | yes |
+| `baseline` | — | no | none |
+
+`plugin` against `baseline` measures whether the servers help at all. **`plugin`
+against `stock` is the more searching question**, and the one that decides whether the
+custom context should exist: the two contexts exclude the identical six tools, so the
+only difference between them is prompt wording. Serena's stock prompt says "Read is
+FORBIDDEN for discovery"; this plugin's says to choose the narrowest tool that fits.
+If `plugin` cannot beat `stock`, the custom context is not earning its maintenance and
+the plugin should use `--context claude-code` instead.
 
 ## Read `route` as a diagnostic, not as a scoreboard
 
