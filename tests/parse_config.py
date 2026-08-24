@@ -90,6 +90,36 @@ def check_mcp_references() -> None:
                       f"missing {PLUGIN / candidate}")
 
 
+# Every token here is charged against the user's context on every session that loads
+# the plugin, whether or not they ask a navigation question. The ceilings exist so
+# growth is a deliberate decision with a number attached, not a slow drift. Raise them
+# in the same change that adds the prose, and say why.
+CONTEXT_BUDGET_CHARS = {
+    "skills/navigate-code/SKILL.md": 3000,
+    "contexts/claude-balanced.yml": 1800,
+    "contexts/codex-balanced.yml": 1800,
+}
+
+
+def check_context_budget() -> None:
+    """Report and bound the instruction footprint this plugin adds."""
+    print("\n[context budget]")
+    total = 0
+    for rel, ceiling in CONTEXT_BUDGET_CHARS.items():
+        path = PLUGIN / rel
+        if not path.exists():
+            check(f"{rel} exists", False, f"missing {path}")
+            continue
+        size = len(path.read_text())
+        total += size
+        pct = size / ceiling
+        print(f"        {rel}: {size} chars ({pct:.0%} of {ceiling} budget, "
+              f"~{size // 4} tokens)")
+        check(f"{rel} within budget", size <= ceiling,
+              f"{size} chars exceeds {ceiling}; raise the ceiling deliberately or trim")
+    print(f"        total instruction footprint: {total} chars (~{total // 4} tokens)")
+
+
 def check_hooks() -> None:
     """A hook manifest naming a script that is not there would fail silently."""
     print("\n[hooks]")
@@ -152,6 +182,7 @@ def main() -> int:
     parse_contexts()
     parse_skill()
     check_mcp_references()
+    check_context_budget()
     check_hooks()
     check_pins_agree()
     check_marketplaces()

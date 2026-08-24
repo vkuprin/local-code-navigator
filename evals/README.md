@@ -105,3 +105,27 @@ does not sync installed plugins. A real install exposes the skill lazily instead
 this arm sees the guidance more strongly than a real session would. It answers "does
 the guidance change routing", which is the question here, but it is not a substitute
 for `claude plugin eval` once that leaves early access.
+
+## When a routing rule may be added or removed
+
+The skill is small on purpose. Every sentence in it is charged against the user's
+context on every session that loads the plugin, whether or not they ask a navigation
+question. `tests/parse_config.py` prints the instruction footprint and fails if it
+exceeds a declared ceiling, so growth is a decision with a number attached rather than
+a drift.
+
+**To add a rule:**
+
+1. Write a failing case first. If you cannot construct a case the current skill gets
+   wrong, the rule is speculation and the cost is real.
+2. Show the case passing with the rule and failing without it, across `--runs 3` or
+   more. One run cannot tell a fix from variance.
+3. If the rule pushes the skill over its ceiling, raise the ceiling in the same change
+   and say why in the commit. Do not raise it silently.
+
+**To remove a rule:** delete it, run the suite, and keep the deletion if no case
+regresses. Prose that no case depends on is not earning its tokens.
+
+Benchmark results do not belong in the skill body — that is what `BENCHMARKS.md` is
+for. This rule has already caught one regression: a measurement paragraph added to
+`SKILL.md` pushed it over budget and was moved out.

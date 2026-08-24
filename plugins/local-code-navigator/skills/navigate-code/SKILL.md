@@ -38,10 +38,5 @@ Use built-in file reading and literal search for reasoning about a file you can 
 name. Routing those through a symbolic tool adds calls without adding certainty. Serena
 is for code intelligence, not for every code question.
 
-Measured on this repository's fixture: both routes reach the same correct answer with
-the same evidence. The symbolic route gets there in fewer steps on reference and
-implementation questions, and in exactly the same one step on a known-file question.
-Fewer calls is the benefit; correctness is not.
-
 Measurement history and the reproduction protocol live in the repository's
 `BENCHMARKS.md`, not in these reusable agent instructions.

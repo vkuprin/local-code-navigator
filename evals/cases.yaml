@@ -82,3 +82,30 @@
   must_include: ["gateway.py"]
   must_exclude: []
   max_tool_calls: 5
+
+- id: safe-rename-symbol
+  tags: [refactor]
+  # Mutating cases run against a throwaway copy of the fixture, so an edit cannot
+  # leak into the next run or into the repository.
+  mutates: true
+  prompt: >-
+    Rename the `charge` function defined in payments/gateway.py to `charge_account`,
+    and update every real reference to it. Do not touch the unrelated `charge` method
+    on LegacyBiller in payments/legacy.py.
+  expect_first_route: serena
+  expect_tools: []
+  must_include: []
+  must_exclude: []
+  # The answer text is not the deliverable here -- the edited tree is. A rename that
+  # reports success without changing the files is the failure worth catching.
+  expect_file_contains:
+    - path: payments/gateway.py
+      text: "def charge_account("
+    - path: payments/checkout.py
+      text: "charge_account(account_id, total_cents)"
+  expect_file_lacks:
+    - path: payments/checkout.py
+      text: "import charge\n"
+  # A rename touches several files and verifies afterwards; it is legitimately the
+  # most expensive case here. Observed at 19 calls when it succeeded.
+  max_tool_calls: 24

@@ -40,6 +40,7 @@ import json
 import os
 import subprocess
 import sys
+import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -52,6 +53,10 @@ EVALS = ROOT / "evals"
 FIXTURE = EVALS / "fixture"
 
 BUILTIN_TOOLS = ["Read", "Grep", "Glob"]
+MCP_TOOLS_WRITE = [
+    "mcp__serena__rename_symbol",
+    "mcp__serena__replace_symbol_body",
+]
 MCP_TOOLS = [
     "mcp__serena__find_symbol",
     "mcp__serena__find_referencing_symbols",
@@ -105,6 +110,14 @@ def skill_body() -> str:
 def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
              timeout: int) -> dict:
     allowed = list(BUILTIN_TOOLS)
+    workdir = FIXTURE
+    scratch: Path | None = None
+    if case.get("mutates"):
+        # Copy the fixture so an edit cannot leak into the next run or the repository.
+        scratch = Path(tempfile.mkdtemp(prefix="lcn-mutate-"))
+        workdir = scratch / "fixture"
+        shutil.copytree(FIXTURE, workdir)
+        allowed += ["Edit", "Write"]
     cmd = [
         "claude", "-p", case["prompt"], "--bare",
         "--output-format", "stream-json", "--verbose",
@@ -115,6 +128,8 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
         "--max-turns", str(case.get("max_tool_calls", 8) * 2 + 6),
         "--strict-mcp-config",
     ]
+    if case.get("mutates") and arm != "baseline":
+        allowed += MCP_TOOLS_WRITE
     if arm == "plugin":
         allowed += MCP_TOOLS + ["ToolSearch"]
         cmd += ["--mcp-config", str(configs["plugin"]),
@@ -130,8 +145,11 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
 
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                              cwd=str(FIXTURE), env={**os.environ})
+                              cwd=str(workdir), env={**os.environ},
+                              stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
+        if scratch:
+            shutil.rmtree(scratch, ignore_errors=True)
         return {"error": "timeout", "tools": [], "answer": "", "cost": 0.0}
 
     tools: list[str] = []
@@ -153,10 +171,26 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
             answer = str(event.get("result") or "")
             cost = float(event.get("total_cost_usd") or 0.0)
 
-    if not answer and proc.returncode != 0:
-        return {"error": (proc.stderr or "no output")[-300:], "tools": tools,
-                "answer": "", "cost": cost}
-    return {"error": None, "tools": tools, "answer": answer, "cost": cost}
+    file_checks: dict[str, bool] = {}
+    for spec in case.get("expect_file_contains", []):
+        target = workdir / spec["path"]
+        text = target.read_text() if target.exists() else ""
+        file_checks[f"{spec['path']} contains {spec['text']!r}"] = spec["text"] in text
+    for spec in case.get("expect_file_lacks", []):
+        target = workdir / spec["path"]
+        text = target.read_text() if target.exists() else ""
+        file_checks[f"{spec['path']} lacks {spec['text']!r}"] = spec["text"] not in text
+    if scratch:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+    if not answer:
+        reason = ("exhausted max-turns after "
+                  f"{len(tools)} tool calls" if tools else
+                  (proc.stderr or "no output")[-300:])
+        return {"error": reason, "tools": tools, "answer": "", "cost": cost,
+                "file_checks": file_checks}
+    return {"error": None, "tools": tools, "answer": answer, "cost": cost,
+            "file_checks": file_checks}
 
 
 JUDGE_PROMPT = """You are grading one assertion about an AI assistant's answer.
@@ -183,7 +217,7 @@ def judge(assertion: str, answer: str, model: str, timeout: int) -> bool | None:
            "--bare", "--model", model, "--max-turns", "1"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                              env={**os.environ})
+                              env={**os.environ}, stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
         return None
     verdict = (proc.stdout or "").strip().upper()
@@ -229,6 +263,9 @@ def score(case: dict, outcome: dict, judgements: dict | None = None) -> dict:
         "cost": outcome["cost"],
         "answer": (outcome["answer"] or "")[:1500],
         "tools": tools,
+        "file_checks": outcome.get("file_checks") or {},
+        "files_ok": (all((outcome.get("file_checks") or {}).values())
+                     if outcome.get("file_checks") else None),
         "judgements": judgements or {},
         "judged_clean": (
             all(v for v in judgements.values() if v is not None)
@@ -310,6 +347,9 @@ def main() -> int:
                     bad = [a for a, v in (s["judgements"] or {}).items() if v is False]
                     if bad:
                         flags.append(f"JUDGE FAILED: {bad[0][:70]}")
+                    badf = [k for k, v in (s["file_checks"] or {}).items() if not v]
+                    if badf:
+                        flags.append(f"FILE CHECK FAILED: {badf[0][:70]}")
                     if not s["within_budget"]:
                         flags.append(f"{s['calls']} calls over budget")
                 print(f"  {arm:9s} run{run}: {s['calls']} calls  ${s['cost']:.4f}  " + "; ".join(flags))
@@ -320,7 +360,7 @@ def main() -> int:
         agg[(r["arm"], "all")].append(r)
 
     header = (f"  {'arm':9s} {'route':>7s} {'tool':>6s} {'evidence':>9s} "
-              f"{'claims':>7s} {'judged':>7s} {'budget':>7s} {'calls':>6s}")
+              f"{'claims':>7s} {'judged':>7s} {'files':>7s} {'budget':>7s} {'calls':>6s}")
     print(header)
     summary = {}
     for arm in arms:
@@ -337,21 +377,25 @@ def main() -> int:
             "calls": sum(r["calls"] for r in rows) / n,
             "tool_used": sum(r["used_expected_tools"] for r in rows) / n,
         }
+        file_rows = [r for r in rows if r.get("files_ok") is not None]
+        stats["files"] = (sum(r["files_ok"] for r in file_rows) / len(file_rows)
+                          if file_rows else float("nan"))
         judged_rows = [r for r in rows if r.get("judged_clean") is not None]
         stats["judged"] = (sum(r["judged_clean"] for r in judged_rows) / len(judged_rows)
                            if judged_rows else float("nan"))
         summary[arm] = stats
         judged = "n/a" if stats["judged"] != stats["judged"] else f"{stats['judged']:.0%}"
+        files = "n/a" if stats["files"] != stats["files"] else f"{stats['files']:.0%}"
         print(f"  {arm:9s} {stats['route']:>7.0%} {stats['tool_used']:>6.0%} "
               f"{stats['evidence']:>9.0%} {stats['claims']:>7.0%} {judged:>7s} "
-              f"{stats['budget']:>7.0%} {stats['calls']:>6.1f}")
+              f"{files:>7s} {stats['budget']:>7.0%} {stats['calls']:>6.1f}")
 
     if "plugin" in summary and "baseline" in summary:
         print("\n  ablation delta (plugin - baseline):")
         print("  NOTE: on cases expecting serena or semble the baseline scores 0% on")
         print("  route by construction -- it has no such tools to choose. Read route")
         print("  as a plugin-arm diagnostic; compare arms on calls, evidence and judged.")
-        for key in ("route", "tool_used", "evidence", "claims", "judged", "budget"):
+        for key in ("route", "tool_used", "evidence", "claims", "judged", "files", "budget"):
             if summary["plugin"][key] != summary["plugin"][key]:
                 continue
             d = summary["plugin"][key] - summary["baseline"][key]
