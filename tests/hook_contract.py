@@ -43,9 +43,12 @@ def main() -> int:
     for tool, cmd in (("Grep", ""), ("Glob", ""), ("Bash", SEARCH_CMD)):
         code, out = run(tool, "remind", cmd)
         check(f"remind allows {tool}{' ' + cmd if cmd else ''}", code == 0, f"exit {code}")
-    code, out = run("Grep", "remind", session="fixed-session-a")
+    # A fresh id per invocation: the hook marks "already reminded" with a file in the
+    # temp dir, so a fixed id passes on a clean machine and fails on the second run.
+    session = f"contract-{uuid.uuid4()}"
+    code, out = run("Grep", "remind", session=session)
     check("remind prints guidance on first call", "local-code-navigator" in out, repr(out[:80]))
-    code, out = run("Grep", "remind", session="fixed-session-a")
+    code, out = run("Grep", "remind", session=session)
     check("remind stays quiet on the second call in a session", out.strip() == "", repr(out[:80]))
 
     print("\n[off mode: must be completely silent]")
