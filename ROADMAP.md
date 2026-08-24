@@ -21,17 +21,33 @@ Shipping the MCP servers and skill together is part of the value. Installation a
 - **Stay local and inspectable.** Be explicit about downloads, caches, subprocesses, resource use, and upstream dependencies.
 - **Keep one behavioral contract across clients.** Claude Code and Codex may need different manifests, but the navigation model should not drift.
 
-## Near-term priorities
+## What is measured
 
-1. [Make the benchmark claims publicly reproducible](https://github.com/vkuprin/local-code-navigator/issues/1).
-2. [Turn the routing boundary into regression cases for the skill](https://github.com/vkuprin/local-code-navigator/issues/7).
-3. [Validate both plugin formats and MCP startup continuously](https://github.com/vkuprin/local-code-navigator/issues/4).
-4. [Test installation from clean macOS and Linux environments](https://github.com/vkuprin/local-code-navigator/issues/5).
-5. [Report accuracy, cost, latency, memory, and cold-versus-warm cache behavior](https://github.com/vkuprin/local-code-navigator/issues/6).
-6. [Publish a tested compatibility matrix](https://github.com/vkuprin/local-code-navigator/issues/3).
-7. [Replace the pinned Semble private-API cache hook with a stable upstream contract](https://github.com/vkuprin/local-code-navigator/issues/2).
+The routing boundary is no longer an assertion. Measured over the public fixture in
+[`evals/`](evals/), 45 runs across three arms:
 
-The implementation backlog is tracked in GitHub issues. This file describes the product direction; individual issues own scope, acceptance criteria, dependencies, and trade-offs.
+| arm | route | evidence | mean calls |
+|---|---:|---:|---:|
+| this plugin | 93% | 100% | 2.4 |
+| Serena's stock context, no guidance | 60% | 100% | 3.5 |
+| no MCP servers at all | 40% | 100% | 4.9 |
+
+Correctness was identical everywhere. **The plugin does not make answers better; it
+reaches the same answers in fewer steps** — 3.3 calls against 15.0 on a reference check
+with an ambiguous symbol, and exactly 1.0 against 1.0 where a built-in tool is the right
+answer. That last number is the one that justifies the project: a router that dragged
+simple questions through symbolic tooling would be worse than nothing.
+
+See [BENCHMARKS.md](BENCHMARKS.md) for the caveats, which matter more than the headline.
+
+## Remaining before release
+
+1. [Verify the Claude Code install from the public marketplace](https://github.com/vkuprin/local-code-navigator/issues/5) — the only real blocker. The plugin has never run *as a plugin* on Claude Code, because direct MCP registrations shadow it.
+2. [Report a Codex arm for the routing cases](https://github.com/vkuprin/local-code-navigator/issues/7).
+3. [Add process and cache-state metrics](https://github.com/vkuprin/local-code-navigator/issues/6).
+4. [Report the non-atomic index write upstream](https://github.com/vkuprin/local-code-navigator/issues/2).
+
+Delivered: a [public corpus and harness](https://github.com/vkuprin/local-code-navigator/issues/1), [CI over both plugin formats and MCP startup](https://github.com/vkuprin/local-code-navigator/issues/4), and a [tested compatibility matrix](https://github.com/vkuprin/local-code-navigator/issues/3).
 
 ## Not goals
 
