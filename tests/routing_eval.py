@@ -155,6 +155,9 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
     tools: list[str] = []
     answer = ""
     cost = 0.0
+    duration_ms = 0
+    api_ms = 0
+    tokens_in = tokens_out = 0
     for line in proc.stdout.splitlines():
         line = line.strip()
         if not line:
@@ -170,6 +173,11 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
         elif event.get("type") == "result":
             answer = str(event.get("result") or "")
             cost = float(event.get("total_cost_usd") or 0.0)
+            duration_ms = int(event.get("duration_ms") or 0)
+            api_ms = int(event.get("duration_api_ms") or 0)
+            usage = event.get("usage") or {}
+            tokens_in = int(usage.get("input_tokens") or 0)
+            tokens_out = int(usage.get("output_tokens") or 0)
 
     file_checks: dict[str, bool] = {}
     for spec in case.get("expect_file_contains", []):
@@ -188,9 +196,11 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
                   f"{len(tools)} tool calls" if tools else
                   (proc.stderr or "no output")[-300:])
         return {"error": reason, "tools": tools, "answer": "", "cost": cost,
-                "file_checks": file_checks}
+                "file_checks": file_checks, "duration_ms": duration_ms,
+                "api_ms": api_ms, "tokens_in": tokens_in, "tokens_out": tokens_out}
     return {"error": None, "tools": tools, "answer": answer, "cost": cost,
-            "file_checks": file_checks}
+            "file_checks": file_checks, "duration_ms": duration_ms,
+            "api_ms": api_ms, "tokens_in": tokens_in, "tokens_out": tokens_out}
 
 
 JUDGE_PROMPT = """You are grading one assertion about an AI assistant's answer.
@@ -261,6 +271,10 @@ def score(case: dict, outcome: dict, judgements: dict | None = None) -> dict:
         "within_budget": len(substantive) <= case.get("max_tool_calls", 8),
         "error": outcome["error"],
         "cost": outcome["cost"],
+        "duration_ms": outcome.get("duration_ms", 0),
+        "api_ms": outcome.get("api_ms", 0),
+        "tokens_in": outcome.get("tokens_in", 0),
+        "tokens_out": outcome.get("tokens_out", 0),
         "answer": (outcome["answer"] or "")[:1500],
         "tools": tools,
         "file_checks": outcome.get("file_checks") or {},
@@ -360,7 +374,8 @@ def main() -> int:
         agg[(r["arm"], "all")].append(r)
 
     header = (f"  {'arm':9s} {'route':>7s} {'tool':>6s} {'evidence':>9s} "
-              f"{'claims':>7s} {'judged':>7s} {'files':>7s} {'budget':>7s} {'calls':>6s}")
+              f"{'claims':>7s} {'judged':>7s} {'files':>7s} {'budget':>7s} "
+              f"{'calls':>6s} {'wall_s':>7s} {'cost$':>8s}")
     print(header)
     summary = {}
     for arm in arms:
@@ -376,6 +391,10 @@ def main() -> int:
             "budget": sum(r["within_budget"] for r in rows) / n,
             "calls": sum(r["calls"] for r in rows) / n,
             "tool_used": sum(r["used_expected_tools"] for r in rows) / n,
+            "wall_s": sum(r["duration_ms"] for r in rows) / n / 1000,
+            "api_s": sum(r["api_ms"] for r in rows) / n / 1000,
+            "tokens_out": sum(r["tokens_out"] for r in rows) / n,
+            "cost": sum(r["cost"] for r in rows) / n,
         }
         file_rows = [r for r in rows if r.get("files_ok") is not None]
         stats["files"] = (sum(r["files_ok"] for r in file_rows) / len(file_rows)
@@ -388,7 +407,8 @@ def main() -> int:
         files = "n/a" if stats["files"] != stats["files"] else f"{stats['files']:.0%}"
         print(f"  {arm:9s} {stats['route']:>7.0%} {stats['tool_used']:>6.0%} "
               f"{stats['evidence']:>9.0%} {stats['claims']:>7.0%} {judged:>7s} "
-              f"{files:>7s} {stats['budget']:>7.0%} {stats['calls']:>6.1f}")
+              f"{files:>7s} {stats['budget']:>7.0%} {stats['calls']:>6.1f} "
+              f"{stats['wall_s']:>7.1f} {stats['cost']:>8.4f}")
 
     if "plugin" in summary and "baseline" in summary:
         print("\n  ablation delta (plugin - baseline):")
@@ -402,6 +422,10 @@ def main() -> int:
             print(f"    {key:9s} {d:+.0%}")
         dc = summary["plugin"]["calls"] - summary["baseline"]["calls"]
         print(f"    {'calls':9s} {dc:+.1f}")
+        dw = summary["plugin"]["wall_s"] - summary["baseline"]["wall_s"]
+        print(f"    {'wall_s':9s} {dw:+.1f}")
+        dt = summary["plugin"]["cost"] - summary["baseline"]["cost"]
+        print(f"    {'cost$':9s} {dt:+.4f}")
 
     if args.json:
         Path(args.json).write_text(json.dumps(
