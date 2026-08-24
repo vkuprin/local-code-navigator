@@ -1,0 +1,25 @@
+tests/routing_eval.py
+  s_b8cf1caab3c8c0::t_f8d978821bff3a 39,74-89,350,393-398
+  s_b8cf1caab3c8c0::t_09052dd33bd37c 98-99,112,115,139-141
+  s_b8cf1caab3c8c0::t_c29c9c947a0b61 399
+BENCHMARKS.md
+  s_b8cf1caab3c8c0::t_83db33722d7421 33-72
+evals/results/three-arm-haiku-3runs.json
+  s_b8cf1caab3c8c0::t_2283ac313c4d00 1-1259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "34fa2a76143aa0d9605e9d1727d8a5fe94fa9006",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
