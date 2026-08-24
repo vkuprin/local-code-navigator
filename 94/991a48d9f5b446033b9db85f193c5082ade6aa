@@ -1,0 +1,31 @@
+plugins/local-code-navigator/.codex-plugin/plugin.json
+  s_b8cf1caab3c8c0::t_3700db9598fd48 4,18-22,28-29
+.claude-plugin/marketplace.json
+  s_b8cf1caab3c8c0::t_3700db9598fd48 14,26-28
+plugins/local-code-navigator/.claude-plugin/plugin.json
+  s_b8cf1caab3c8c0::t_3700db9598fd48 6,20-24
+CHANGELOG.md
+  s_b8cf1caab3c8c0::t_0920b250f8d0bd 20-24
+README.md
+  s_b8cf1caab3c8c0::t_c1a93ead8586ed 3-13,74-150
+  s_b8cf1caab3c8c0::t_a2287bf7e1106c 307-310,312-319,322-326,331-338,356-361
+  s_b8cf1caab3c8c0::t_c4d11824e4f276 151
+ROADMAP.md
+  s_b8cf1caab3c8c0::t_0920b250f8d0bd 26-27,29-33,35-37,39-40,42,44-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "94991a48d9f5b446033b9db85f193c5082ade6aa",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
