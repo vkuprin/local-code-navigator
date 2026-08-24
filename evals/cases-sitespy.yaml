@@ -1,9 +1,18 @@
 # Routing cases over a real repository, not the synthetic fixture.
 #
-# Corpus: site-spy's changedetectionio package (~328 Python files). Ground truth was
-# established by AST analysis and exhaustive text scan, and is recorded per case below.
-# Run with:
-#   --cases evals/cases-sitespy.yaml --repo <path>/site-spy/server/changedetectionio
+# Corpus: a FROZEN SNAPSHOT of site-spy's changedetectionio package, 330 Python files.
+# Ground truth was established by exhaustive text scan of that snapshot and is recorded
+# per case below.
+#
+# Snapshot, do not point this at a working tree:
+#   cp -R <path>/site-spy/server/changedetectionio /tmp/lcn-corpus/changedetectionio
+#   uv run --script tests/routing_eval.py --cases evals/cases-sitespy.yaml \
+#          --repo /tmp/lcn-corpus/changedetectionio
+#
+# The first attempt at this ran against the live checkout and had to be thrown away.
+# Another session was editing it, so the symbol under test moved from line 920 to 926
+# mid-run and the line numbers in these cases silently stopped matching the corpus.
+# A benchmark whose ground truth moves underneath it measures nothing.
 #
 # The point of this file is to check whether the routing advantage measured on a
 # 9-file synthetic fixture survives contact with a real codebase, where retrieval is
@@ -13,9 +22,9 @@
   tags: [references, negative]
   # Ground truth. `send_content_changed_notification` is defined twice and mentioned
   # five times:
-  #   worker.py:1185               module-level async def   <- the symbol under test
-  #   worker.py:920                await ...(...)           <- THE ONLY REAL REFERENCE
-  #   worker.py:1193               notification_service.send_content_changed_notification(...)
+  #   worker.py:1191               module-level async def   <- the symbol under test
+  #   worker.py:926                await ...(...)           <- THE ONLY REAL REFERENCE
+  #   worker.py:1199               notification_service.send_content_changed_notification(...)
   #                                  -> a method call on an object, 8 lines below the
   #                                     definition, in the same file. Not a reference.
   #   notification_service.py:781  def ...(self, watch_uuid) -> a separate definition
@@ -27,7 +36,7 @@
     Do not include same-name methods or unrelated definitions.
   expect_first_route: serena
   expect_tools: []
-  must_include: ["worker.py", "920"]
+  must_include: ["worker.py", "926"]
   must_exclude: []
   judge_assertions:
     - assertion: >-
@@ -36,13 +45,13 @@
         worker.py. Answer NO if it omits it, or names it only to exclude it.
       expect: false
     - assertion: >-
-        The answer claims that worker.py line 1193 is a call to the module-level
+        The answer claims that worker.py line 1199 is a call to the module-level
         send_content_changed_notification function. It is actually a method call on a
         notification_service object, so answer YES only if the answer treats it as a
         reference to the module-level function.
       expect: false
     - assertion: >-
-        The answer identifies worker.py line 920 as a call site of the function.
+        The answer identifies worker.py line 926 as a call site of the function.
       expect: true
   max_tool_calls: 14
 
@@ -86,3 +95,54 @@
   must_include: ["env_utils.py"]
   must_exclude: []
   max_tool_calls: 6
+
+- id: real-large-file-navigation
+  tags: [navigation]
+  # worker.py is 1276 lines / ~18k tokens. The symbol under test is 10 lines at
+  # 161-171. Reading the file whole to answer this costs roughly 18k tokens of
+  # context; locating the symbol costs a fraction of that. Call count will not show
+  # the difference -- compare tok_in and cost between arms.
+  prompt: >-
+    In worker.py there is a function `_should_auto_heal_diff`. What does it return when
+    the call it wraps raises an exception, and which module does it delegate to when it
+    does not? Quote the returned value exactly.
+  expect_first_route: serena
+  expect_tools: []
+  must_include: ["quality_gate_error", "watch_quality"]
+  must_exclude: []
+  max_tool_calls: 8
+
+- id: real-rename-with-trap
+  tags: [refactor]
+  mutates: true
+  # Ground truth. `_should_auto_heal_diff` has exactly two occurrences, 835 lines
+  # apart: the definition at worker.py:161 and one call at worker.py:996.
+  #
+  # The trap: its name contains `should_auto_heal`, which is a DIFFERENT function
+  # imported from changedetectionio.watch_quality on line 163 and called on line 165.
+  # A careless textual replace of "should_auto_heal" breaks that import and the
+  # delegation with it. The file checks below assert both halves.
+  prompt: >-
+    In worker.py, rename the function `_should_auto_heal_diff` to
+    `_evaluate_auto_heal_gate`, updating its definition and every call to it. Do not
+    rename anything else.
+  expect_first_route: serena
+  expect_tools: []
+  must_include: []
+  must_exclude: []
+  expect_file_contains:
+    - path: worker.py
+      text: "def _evaluate_auto_heal_gate(datastore, watch):"
+    - path: worker.py
+      text: "_evaluate_auto_heal_gate(datastore, watch)"
+    # The unrelated same-prefix function must survive untouched.
+    - path: worker.py
+      text: "from changedetectionio.watch_quality import should_auto_heal"
+    - path: worker.py
+      text: "return should_auto_heal(datastore, watch)"
+    - path: watch_quality.py
+      text: "def should_auto_heal(datastore, watch):"
+  expect_file_lacks:
+    - path: worker.py
+      text: "_should_auto_heal_diff"
+  max_tool_calls: 20

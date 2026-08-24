@@ -83,9 +83,19 @@ def fixture_fingerprint() -> str:
     """
     digest = hashlib.sha256()
     for path in sorted(CORPUS.rglob("*")):
-        if path.is_file():
-            digest.update(str(path.relative_to(CORPUS)).encode())
-            digest.update(path.read_bytes())
+        if not path.is_file():
+            continue
+        rel = path.relative_to(CORPUS)
+        # Serena writes .serena/ wherever it activates a project and Python drops
+        # __pycache__ next to anything it imports. Those appear on a perfectly clean
+        # run, so hashing them turns the guard into a false alarm that cries wolf on
+        # every measurement.
+        if any(part in (".serena", "__pycache__", ".git") for part in rel.parts):
+            continue
+        if rel.suffix in (".pyc", ".pyo"):
+            continue
+        digest.update(str(rel).encode())
+        digest.update(path.read_bytes())
     return digest.hexdigest()
 
 
@@ -198,9 +208,19 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
             cost = float(event.get("total_cost_usd") or 0.0)
             duration_ms = int(event.get("duration_ms") or 0)
             api_ms = int(event.get("duration_api_ms") or 0)
+            # usage.input_tokens counts only the uncached remainder, which on a
+            # repeated prompt is a handful of tokens and says nothing about how much
+            # context the run actually consumed. modelUsage carries the real totals.
             usage = event.get("usage") or {}
-            tokens_in = int(usage.get("input_tokens") or 0)
             tokens_out = int(usage.get("output_tokens") or 0)
+            tokens_in = 0
+            for stats in (event.get("modelUsage") or {}).values():
+                tokens_in += int(stats.get("inputTokens") or 0)
+                tokens_in += int(stats.get("cacheReadInputTokens") or 0)
+                tokens_in += int(stats.get("cacheCreationInputTokens") or 0)
+            if not tokens_in:
+                tokens_in = int(usage.get("input_tokens") or 0) + int(
+                    usage.get("cache_read_input_tokens") or 0)
 
     file_checks: dict[str, bool] = {}
     for spec in case.get("expect_file_contains", []):
@@ -325,6 +345,9 @@ def main() -> int:
     parser.add_argument("--judge-model", default="haiku")
     parser.add_argument("--cases", default=str(EVALS / "cases.yaml"),
                         help="case definitions to run")
+    parser.add_argument("--allow-mutating", action="store_true",
+                        help="permit mutating cases against --repo; each run still "
+                             "works on its own copy, so point --repo at a snapshot")
     parser.add_argument("--repo",
                         help="run against a real repository instead of the "
                              "synthetic fixture; mutating cases are refused")
@@ -345,11 +368,12 @@ def main() -> int:
             return 2
 
     cases = yaml.safe_load(Path(args.cases).read_text())
-    if args.repo:
+    if args.repo and not args.allow_mutating:
         mutating = [c["id"] for c in cases if c.get("mutates")]
         if mutating:
             print(f"refusing to run mutating cases against {CORPUS}: {mutating}")
-            print("Rename cases edit the tree. Run those against the fixture.")
+            print("Rename cases edit files. Point --repo at a disposable snapshot and")
+            print("pass --allow-mutating if that is what you meant.")
             return 2
     if args.case:
         cases = [c for c in cases if args.case in c["id"]]
