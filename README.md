@@ -1,12 +1,52 @@
 # Local Code Navigator
 
-A cross-agent plugin that combines semantic retrieval with language-server-backed symbol intelligence for Claude Code and Codex.
+Symbol-aware and semantic code navigation for Claude Code and Codex, with a routing
+rule that decides which one — or neither — should answer a given question.
 
-- [Serena](https://github.com/oraios/serena) provides symbol lookup, references, diagnostics, and symbolic edits.
-- [Semble](https://github.com/MinishLab/semble) provides semantic search when you know the behavior but not the symbol name.
-- The lazy `navigate-code` skill routes work between those MCP servers and each coding agent's built-in file tools.
+- [Serena](https://github.com/oraios/serena) resolves symbols, references, implementations, diagnostics, and symbolic edits.
+- [Semble](https://github.com/MinishLab/semble) finds code by behavior when you do not know the name.
+- Your agent's built-in tools stay the right answer for literal text and for reading a file you can already name.
 
-Installing the plugin contributes both MCP servers and the matching guidance. Removing it removes both, so the skill never advertises tools the user did not install.
+## What this actually claims
+
+Bundling two MCP servers is convenience, not a reason to exist — you can add both by
+hand in two commands. The claim worth testing is narrower and more specific:
+
+**Serena's own guidance is too aggressive, and a milder rule routes better.** Serena
+ships a `claude-code` context that excludes the same six client-owned tools this plugin
+excludes, and instructs the agent that `Read` is *forbidden* for discovery. This plugin
+excludes the identical six tools and instead says to choose the narrowest tool that
+matches the question. That prompt difference is the entire product.
+
+Measured over the public fixture in [`evals/`](evals/), 45 runs, three arms:
+
+| arm | correct first route | evidence | mean tool calls |
+|---|---:|---:|---:|
+| this plugin | **93%** | 100% | **2.4** |
+| Serena's stock context, no guidance | 60% | 100% | 3.5 |
+| no MCP servers at all | 40% | 100% | 4.9 |
+
+Read the middle row, not the bottom one. Without MCP servers an agent cannot choose
+Serena, so that 40% is arithmetic rather than judgment. The stock arm has exactly the
+same tools available and chose worse.
+
+**It does not make answers more correct.** Every arm scored 100% on evidence and on
+prohibited claims. The plugin reaches the same answers in fewer steps — 3.3 calls
+against 15.0 on a reference check with an ambiguous same-name symbol — and, just as
+importantly, takes exactly 1.0 calls where a built-in tool is the right answer. A router
+that dragged simple questions through symbolic tooling would be worse than nothing.
+
+### What would falsify this
+
+Those numbers come from a **9-file synthetic fixture measured with `haiku`**. That is
+enough to show the routing rule is not noise, and not enough to claim it holds on a real
+repository, where retrieval is noisier and built-in search degrades differently. Treat
+the result as a reason to try it, not as a benchmark. Reproduce it, or break it, with
+[`tests/routing_eval.py`](tests/routing_eval.py) — see [BENCHMARKS.md](BENCHMARKS.md),
+whose caveats matter more than its headline.
+
+Installing contributes both MCP servers and the matching guidance; removing takes both
+away, so the skill never advertises tools you do not have.
 
 ## Prerequisite
 
