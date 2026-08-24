@@ -1,0 +1,19 @@
+tests/routing_eval.py
+  s_b8cf1caab3c8c0::t_d8f00e1226b0de 158-160,176-180,199-200,202-203,274-277,377-378,394-397,410-411,425-428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6d2884e392c63eaa04e791bb6b4ea5bb9a93cc91",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf1caab3c8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d934b30c-25f2-4bdd-bda2-ed1a40e51c8a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vitaly Kuprin <vitas_s@inbox.lv>"
+    }
+  }
+}
