@@ -1,5 +1,88 @@
 # Navigation benchmarks
 
+## Headline: the fixture result did not survive a real repository
+
+Everything below the next heading was measured on a nine-file synthetic fixture with
+`haiku`. It is kept because it is real, and because the gap between it and the numbers
+here is the most useful thing in this file.
+
+Frozen 330-file snapshot of a production codebase, `sonnet`, 6 cases x 3 arms x 3 runs,
+54 runs, 0 errors, $1.14:
+
+| arm | route | correctness | judged | mean calls | context | cost |
+|---|---:|---:|---:|---:|---:|---:|
+| plugin | 67% | 89% | 33% | 3.4 | 1,079,404 | $0.0257 |
+| stock | 50% | 100% | 100% | 3.0 | 812,169 | $0.0214 |
+| baseline | 33% | 100% | 100% | 3.2 | 212,886 | $0.0162 |
+
+### Context cost, per case
+
+The plugin is more expensive on every single case, including the one designed to be
+its best.
+
+| case | plugin | baseline | ratio |
+|---|---:|---:|---:|
+| reference check, 4 same-name decoys | 57,620 | 18,733 | 3.1x |
+| behavior described, name unknown | 125,304 | 14,910 | 8.4x |
+| reasoning about one known file | 37,337 | 7,227 | 5.2x |
+| literal string search | 28,475 | 4,098 | 6.9x |
+| 10-line symbol in a 1276-line file | 49,174 | 9,565 | 5.1x |
+| rename with a same-prefix trap | 61,891 | 16,429 | 3.8x |
+
+The large-file case was built specifically to favour symbolic navigation: a 10-line
+function inside 18k tokens of source, where reading the file whole should lose badly.
+It lost anyway. Tool schemas for 21 Serena tools and 2 Semble tools enter context every
+turn, and that fixed overhead is larger than the variable saving.
+
+### The correctness regression
+
+The plugin arm answered the reference case correctly in 1 of 3 runs. The two failures
+both reported line 925 where the answer is 926.
+
+Serena reports 0-based lines and `SKILL.md` instructs the agent to add one. In the
+failing runs the agent applied that correction to the definition and omitted it for the
+reference **within the same answer** — one run even prints "(0-based 1190)" beside a
+correct 1191 and then gives a raw 925 for the call site. A literal text search reports
+1-based lines and cannot produce this class of error; both other arms scored 100%.
+
+This reproduced across two independent runs on two different corpora. An earlier
+retraction of this finding, on the grounds that it looked like variance, was wrong.
+
+### Where the advantage went
+
+| corpus | model | plugin | baseline | ratio |
+|---|---|---:|---:|---:|
+| 9-file fixture | haiku | 1.9 | 5.2 | 2.7x |
+| 9-file fixture | sonnet | 3.8 | 5.3 | 1.4x |
+| 330-file snapshot | sonnet | 3.4 | 3.2 | 0.9x |
+
+Both variables matter. A stronger model narrows the gap on the same corpus, and a
+realistic corpus closes it. Neither alone explains the result, which is why both were
+measured separately.
+
+### What survived
+
+Symbolic renaming. On the fixture it took 6.3 calls against the baseline's 18.3 and
+cost $0.038 against $0.089. On the real repository the same case narrowed to 4.0 calls
+against 5.3, with the baseline still cheaper overall. This is the one place where the
+symbolic route does something text tools handle badly, and it is a narrower claim than
+the project was built on.
+
+### Reproducing
+
+```bash
+export ANTHROPIC_API_KEY=...
+# Snapshot first. Never point --repo at a working tree: an earlier attempt did, another
+# session edited the file mid-run, the symbol moved from line 920 to 926, and the whole
+# measurement had to be thrown away.
+cp -R <path>/changedetectionio /tmp/lcn-corpus/changedetectionio
+uv run --python 3.12 --script tests/routing_eval.py \
+  --cases evals/cases-sitespy.yaml --repo /tmp/lcn-corpus/changedetectionio \
+  --allow-mutating --arms plugin,stock,baseline --runs 3 --model sonnet
+```
+
+---
+
 ## What this plugin does and does not buy you
 
 Measured on the fixture in [`evals/`](evals/), 3 trials per case per arm, 30 runs,

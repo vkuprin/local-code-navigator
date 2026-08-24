@@ -7,43 +7,57 @@ rule that decides which one — or neither — should answer a given question.
 - [Semble](https://github.com/MinishLab/semble) finds code by behavior when you do not know the name.
 - Your agent's built-in tools stay the right answer for literal text and for reading a file you can already name.
 
-## What this actually claims
+## What this measured, including the part that failed
 
 Bundling two MCP servers is convenience, not a reason to exist — you can add both by
-hand in two commands. The claim worth testing is narrower and more specific:
+hand in two commands. The claim worth testing was that Serena's own guidance is too
+aggressive and a milder routing rule does better. On a nine-file synthetic fixture with
+`haiku`, it did: 1.9 tool calls against 5.2, same correctness.
 
-**Serena's own guidance is too aggressive, and a milder rule routes better.** Serena
-ships a `claude-code` context that excludes the same six client-owned tools this plugin
-excludes, and instructs the agent that `Read` is *forbidden* for discovery. This plugin
-excludes the identical six tools and instead says to choose the narrowest tool that
-matches the question. That prompt difference is the entire product.
+**That result did not survive a real repository.** Re-run over a frozen 330-file
+snapshot with `sonnet`, 54 runs, three arms:
 
-Measured over the public fixture in [`evals/`](evals/), 45 runs, three arms:
+| arm | route | correctness | mean calls | context (tok_in) | cost |
+|---|---:|---:|---:|---:|---:|
+| this plugin | 67% | **89%** | 3.4 | **1,079,404** | $0.0257 |
+| Serena's stock context | 50% | 100% | 3.0 | 812,169 | $0.0214 |
+| no MCP servers | 33% | 100% | 3.2 | **212,886** | **$0.0162** |
 
-| arm | correct first route | evidence | mean tool calls |
-|---|---:|---:|---:|
-| this plugin | **93%** | 100% | **2.4** |
-| Serena's stock context, no guidance | 60% | 100% | 3.5 |
-| no MCP servers at all | 40% | 100% | 4.9 |
+Three things go wrong at once, and they are worth stating plainly:
 
-Read the middle row, not the bottom one. Without MCP servers an agent cannot choose
-Serena, so that 40% is arithmetic rather than judgment. The stock arm has exactly the
-same tools available and chose worse.
+**It costs 5.1x more context.** Serena's central pitch is that reading one symbol beats
+reading a whole file. Measured, the opposite happens: the tool schemas for 21 Serena
+tools and 2 Semble tools load into context on every turn, and that overhead dwarfs any
+saving from symbol-level reads. This holds even on the case built specifically to
+favour it — locating a 10-line function inside a 1276-line, 18k-token file cost 49,174
+tokens with the plugin and 9,565 without it.
 
-**It does not make answers more correct.** Every arm scored 100% on evidence and on
-prohibited claims. The plugin reaches the same answers in fewer steps — 3.3 calls
-against 15.0 on a reference check with an ambiguous same-name symbol — and, just as
-importantly, takes exactly 1.0 calls where a built-in tool is the right answer. A router
-that dragged simple questions through symbolic tooling would be worse than nothing.
+**It is less correct on its own flagship case.** Asked for real references to a symbol
+with four same-name decoys, the plugin arm answered correctly once in three runs. Twice
+it reported line 925 where the answer is 926 — Serena returns 0-based lines, the skill
+says to add one, and the model applied that to the definition and forgot it for the
+reference *in the same answer*. A literal text search cannot make this mistake, because
+it reports 1-based lines. Both other arms scored 100%.
 
-### What would falsify this
+**The call-count advantage decays.** Fixture with `haiku`: 1.9 against 5.2. Same fixture
+with `sonnet`: 3.8 against 5.3. Real repository with `sonnet`: 3.4 against 3.2. Both the
+stronger model and the realistic corpus eat into it, and together they erase it.
 
-Those numbers come from a **9-file synthetic fixture measured with `haiku`**. That is
-enough to show the routing rule is not noise, and not enough to claim it holds on a real
-repository, where retrieval is noisier and built-in search degrades differently. Treat
-the result as a reason to try it, not as a benchmark. Reproduce it, or break it, with
-[`tests/routing_eval.py`](tests/routing_eval.py) — see [BENCHMARKS.md](BENCHMARKS.md),
-whose caveats matter more than its headline.
+### What still stands
+
+One case survived: renaming a symbol on the fixture took 6.3 calls against the
+baseline's 18.3, at less than half the cost. Symbolic edits are the part of Serena that
+text tools genuinely struggle to match. On the real repository the same case narrowed to
+4.0 calls against 5.3, with the baseline still cheaper.
+
+### What this means if you are deciding whether to install it
+
+On a strong model, against a real codebase, this plugin currently costs more context,
+more money, and is not more correct. Install it if you specifically want semantic
+discovery or symbolic refactoring and are willing to pay for the context; do not install
+it expecting fewer steps or better answers. The measurements above are reproducible —
+[`tests/routing_eval.py`](tests/routing_eval.py), raw per-run data in
+[`evals/results/`](evals/results/), caveats in [BENCHMARKS.md](BENCHMARKS.md).
 
 Installing contributes both MCP servers and the matching guidance; removing takes both
 away, so the skill never advertises tools you do not have.
