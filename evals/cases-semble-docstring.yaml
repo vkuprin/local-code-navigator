@@ -1,0 +1,166 @@
+# Does the `search` tool description change how an agent routes?
+#
+# This is the experiment MinishLab/semble#254 was missing. The earlier run measured
+# semble against no semble, which shows the TOOL helps. It says nothing about whether
+# a different DOCSTRING helps, and that is what the issue proposed changing.
+#
+# Both arms carry semble 0.5.5, the same prebuilt index, the same corpus, and the same
+# allowed tools. The only difference between the two binaries is the `search` docstring:
+#
+#   stock-doc     "Search once with a focused query describing what the code does or
+#                  its name. Write queries using function/class names or behavior
+#                  descriptions, not error messages."
+#   proposed-doc  "Search when the words in your question may not be in the code. ...
+#                  If you know the symbol name ... a text search is as good and cheaper.
+#                  Switch to this tool when a text search returned a file that looked
+#                  right and was not."
+#
+# Ten cases, balanced 6/4 on purpose. A suite made only of opaque-name cases would
+# flatter the proposed wording; one made only of matching-name cases would bury it.
+#
+#   --cases evals/cases-semble-docstring.yaml --repo /tmp/lcn-corpus/changedetectionio
+#   --arms proposed-doc,stock-doc
+
+# ============================================================ opaque: name hides it
+# The question is phrased in domain terms that do not appear in the target function.
+# A text search has nothing literal to match, so this is where the proposed wording
+# claims to steer better.
+
+- id: doc-daily-allowance
+  tags: [opaque]
+  # flask_app.py:251 _dynamic_daily_limit -- GET returns "50000 per day"; mutating
+  # methods fall through to the per-plan quota. This is the case from the issue.
+  prompt: >-
+    Requests that only read data are not charged against a customer's daily
+    allowance, while requests that change something are. Where is that decided?
+    Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["flask_app.py", "_dynamic_daily_limit"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-polite-host
+  tags: [opaque]
+  # watch_reliability.py:234 fetch_host -- identity for per-host pacing; loopback and
+  # private ranges return None. Code says "polite"/"pacing", never "too fast".
+  prompt: >-
+    We hold ourselves back so that we never hammer any single website too
+    quickly. What decides which requests count as the same website for that
+    purpose, and which ones are exempt? Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["watch_reliability.py", "fetch_host"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-anon-analytics
+  tags: [opaque]
+  # server_analytics.py:31 profile_id_for_api_key -- sha256(api_key)[:32].
+  prompt: >-
+    We report usage events to an outside company. The customer's secret must not
+    be recoverable from anything we send them. Where is the identifier we send
+    instead derived? Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["server_analytics.py", "profile_id_for_api_key"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-cheap-tier-interval
+  tags: [opaque]
+  # api/UserSettings.py:32 _validate_time_between_check -- min/max seconds per plan.
+  prompt: >-
+    Somebody paying for the cheapest tier asks for their pages to be looked at
+    every single minute. Where is that asking turned down? Name the file and the
+    function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["UserSettings.py", "_validate_time_between_check"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-saas-or-selfhost
+  tags: [opaque]
+  # watch_reliability.py:338 hosted_mode_enabled -- explicit env, else inferred from
+  # a non-local public URL.
+  prompt: >-
+    The software behaves differently when it is running as a paid online service
+    than when somebody runs it on their own machine. Where does it work out which
+    of those two situations it is in? Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["watch_reliability.py", "hosted_mode_enabled"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-give-up-on-alerts
+  tags: [opaque]
+  # notification_channel_health.py:96 _disable_channel -- moves the url into
+  # notification_urls_disabled after DISABLE_AFTER_CONSECUTIVE_FAILURES hard failures.
+  prompt: >-
+    When somewhere we send alerts keeps refusing them over and over, we stop
+    sending to that place for good and tell the owner. Where does the stopping
+    happen? Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["notification_channel_health.py", "_disable_channel"]
+  must_exclude: []
+  max_tool_calls: 10
+
+# ======================================================= matching: the name says it
+# The words a person would use are in the symbol name, so a text search should find
+# these as fast as semantic search. The proposed wording explicitly tells the agent
+# NOT to reach for the tool here. If it still does, the wording costs more than it
+# saves, and these cases are where that shows up.
+
+- id: doc-session-age
+  tags: [matching]
+  # browser_steps/browser_steps.py:430 has_expired
+  prompt: >-
+    A browser automation session is thrown away once it gets too old. How old is
+    too old, and where is that check implemented? Name the file and the function.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["browser_steps.py", "has_expired"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-circuit-breaker
+  tags: [matching]
+  # store/sqlite_db.py:418 watch_quality_circuit_open
+  prompt: >-
+    After several automated fixes fail one after another, this codebase
+    deliberately stops trying for a while instead of retrying forever. Where is
+    that decision made? Name the file and the function.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["sqlite_db.py", "watch_quality_circuit_open"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-schedule-window
+  tags: [matching]
+  # time_handler.py:83 is_within_schedule
+  prompt: >-
+    A user can restrict checks to a schedule, so they only run during chosen
+    hours on chosen days. Where is it decided that right now falls inside that
+    window? Name the file and the function.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["time_handler.py", "is_within_schedule"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: doc-disposable-email
+  tags: [matching]
+  # disposable_emails.py:38 is_disposable_email
+  prompt: >-
+    Sign-ups using a throwaway or disposable email domain are treated specially.
+    Where is an address checked against the disposable domain list? Name the file
+    and the function.
+  expect_first_route: builtin
+  expect_tools: []
+  must_include: ["disposable_emails.py", "is_disposable_email"]
+  must_exclude: []
+  max_tool_calls: 10

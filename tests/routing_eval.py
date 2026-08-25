@@ -72,6 +72,68 @@ MCP_TOOLS = [
 # Loading a deferred tool's schema is bookkeeping, not a routing decision.
 ROUTE_NEUTRAL = {"ToolSearch", "Skill", "TodoWrite"}
 
+# Process machinery rather than navigation. Counted separately from `calls` so the
+# existing numbers stay comparable: a plugin that answers a named-file question by
+# spawning a subagent and writing a todo list has not navigated better, it has spent
+# more. `calls` keeps its old meaning; `orch_calls` is the over-routing signal.
+ORCHESTRATION_TOOLS = {"Task", "Skill", "TodoWrite", "SlashCommand"}
+# Both real-install arms get these so the comparison isolates the plugin, not the
+# toolset. The control arm simply has no plugin skills to invoke.
+ORCH_ALLOWED = ["Skill", "Task", "TodoWrite"]
+
+# Colin Eberhardt's challenge to ponytail (issue #126): does a seven-word prompt do
+# the same job as a whole plugin? Reproduced verbatim so the arm tests his claim and
+# not a paraphrase of it.
+YAGNI_PROMPT = "Follow YAGNI principles, and prefer one-liner solutions."
+
+# Semantic-search tools only. The two docstring arms carry semble and nothing else,
+# so any routing difference between them is the tool description and not the toolset.
+SEMBLE_TOOLS = ["mcp__semble__search", "mcp__semble__find_related"]
+DOCSTRING_ARMS = ("stock-doc", "proposed-doc")
+
+# Arms that run a real install rather than --bare.
+REAL_INSTALL_ARMS = ("under-test", "ecc", "control", "yagni")
+
+# Set by main() for the real-install arms.
+PLUGIN_UNDER_TEST: Path | None = None
+ISOLATED_HOME: Path | None = None
+
+
+def _git(workdir: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args], cwd=str(workdir), capture_output=True, text=True,
+        env={**os.environ, "GIT_AUTHOR_NAME": "eval", "GIT_AUTHOR_EMAIL": "e@localhost",
+             "GIT_COMMITTER_NAME": "eval", "GIT_COMMITTER_EMAIL": "e@localhost"})
+
+
+def git_baseline(workdir: Path) -> bool:
+    """Snapshot the scratch copy so `git diff` measures exactly what the agent wrote.
+
+    -f on `add` because the corpus ships a .gitignore, and a file the agent creates
+    that happens to match it would otherwise be silently uncounted -- which would
+    understate whichever arm wrote it.
+    """
+    shutil.rmtree(workdir / ".git", ignore_errors=True)
+    if _git(workdir, "init", "-q").returncode:
+        return False
+    _git(workdir, "add", "-A", "-f")
+    return _git(workdir, "commit", "-q", "--no-gpg-sign", "-m", "baseline").returncode == 0
+
+
+def git_added_lines(workdir: Path) -> tuple[int, int]:
+    """Added lines and files touched, the same metric ponytail's own benchmark uses."""
+    _git(workdir, "add", "-A", "-f")
+    out = _git(workdir, "diff", "--cached", "--numstat", "HEAD")
+    if out.returncode:
+        return -1, -1
+    added = files = 0
+    for line in out.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 3 and parts[0].isdigit():
+            added += int(parts[0])
+            files += 1
+    return added, files
+
 
 def fixture_fingerprint() -> str:
     """Hash the corpus so a run that mutates it cannot pass silently.
@@ -147,12 +209,21 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
         scratch = Path(tempfile.mkdtemp(prefix="lcn-mutate-"))
         workdir = scratch / "fixture"
         shutil.copytree(CORPUS, workdir)
+        git_baseline(workdir)
         allowed += ["Edit", "Write"]
         configs = dict(configs)
         configs["plugin"] = resolved_mcp_config(scratch, project=workdir, tag="plugin")
         configs["stock"] = resolved_mcp_config(scratch, "claude-code", workdir, "stock")
-    cmd = [
-        "claude", "-p", case["prompt"], "--bare",
+    # A real plugin install cannot be measured under --bare. Verified empirically:
+    # with `--bare --plugin-dir <ecc>` the plugin loads (skills go 15 -> 337 in the
+    # init event) but asked to name its own skills the model answers NONE -- the
+    # descriptions never reach it, so it pays no context and gets no guidance. These
+    # arms therefore drop --bare and isolate with CLAUDE_CONFIG_DIR instead.
+    real_install = arm in REAL_INSTALL_ARMS
+    cmd = ["claude", "-p", case["prompt"]]
+    if not real_install:
+        cmd.append("--bare")
+    cmd += [
         "--output-format", "stream-json", "--verbose",
         "--model", model,
         # Generous headroom on purpose. The baseline arm often needs more calls than
@@ -172,13 +243,31 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
         # between this and `plugin` is the plugin's actual contribution.
         allowed += MCP_TOOLS + ["ToolSearch"]
         cmd += ["--mcp-config", str(configs["stock"])]
+    elif arm in DOCSTRING_ARMS:
+        # Identical corpus, identical prebuilt index, identical binary except for one
+        # docstring. Whatever separates these two arms is the wording, nothing else.
+        allowed += SEMBLE_TOOLS + ["ToolSearch"]
+        cmd += ["--mcp-config", str(configs[arm])]
+    elif real_install:
+        allowed += ORCH_ALLOWED
+        cmd += ["--mcp-config", str(configs["empty"])]
+        if arm in ("under-test", "ecc"):
+            cmd += ["--plugin-dir", str(PLUGIN_UNDER_TEST)]
+        elif arm == "yagni":
+            cmd += ["--append-system-prompt", YAGNI_PROMPT]
     else:
         cmd += ["--mcp-config", str(configs["empty"])]
     cmd += ["--allowed-tools", *allowed]
 
     try:
+        env = {**os.environ}
+        if real_install:
+            # Without this the developer's own ~/.claude leaks in: a --bare run still
+            # reported 10 personal plugins in its init event. A throwaway config dir
+            # reports `plugins: NONE`, which is what a control arm has to mean.
+            env["CLAUDE_CONFIG_DIR"] = str(ISOLATED_HOME)
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                              cwd=str(workdir), env={**os.environ},
+                              cwd=str(workdir), env=env,
                               stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
         if scratch:
@@ -231,7 +320,9 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
         target = workdir / spec["path"]
         text = target.read_text() if target.exists() else ""
         file_checks[f"{spec['path']} lacks {spec['text']!r}"] = spec["text"] not in text
+    loc_added, files_touched = (-1, -1)
     if scratch:
+        loc_added, files_touched = git_added_lines(workdir)
         shutil.rmtree(scratch, ignore_errors=True)
 
     if not answer:
@@ -240,10 +331,12 @@ def run_case(case: dict, arm: str, model: str, configs: dict[str, Path],
                   (proc.stderr or "no output")[-300:])
         return {"error": reason, "tools": tools, "answer": "", "cost": cost,
                 "file_checks": file_checks, "duration_ms": duration_ms,
-                "api_ms": api_ms, "tokens_in": tokens_in, "tokens_out": tokens_out}
+                "api_ms": api_ms, "tokens_in": tokens_in, "tokens_out": tokens_out,
+                "loc_added": loc_added, "files_touched": files_touched}
     return {"error": None, "tools": tools, "answer": answer, "cost": cost,
             "file_checks": file_checks, "duration_ms": duration_ms,
-            "api_ms": api_ms, "tokens_in": tokens_in, "tokens_out": tokens_out}
+            "api_ms": api_ms, "tokens_in": tokens_in, "tokens_out": tokens_out,
+            "loc_added": loc_added, "files_touched": files_touched}
 
 
 JUDGE_PROMPT = """You are grading one assertion about an AI assistant's answer.
@@ -311,6 +404,10 @@ def score(case: dict, outcome: dict, judgements: dict | None = None) -> dict:
         "prohibited_found": [s for s in case.get("must_exclude", [])
                              if _normalize(s) in answer_lc],
         "calls": len(substantive),
+        "loc_added": outcome.get("loc_added", -1),
+        "files_touched": outcome.get("files_touched", -1),
+        "orch_calls": sum(1 for t in tools if t in ORCHESTRATION_TOOLS),
+        "orch_tools": [t for t in tools if t in ORCHESTRATION_TOOLS],
         "within_budget": len(substantive) <= case.get("max_tool_calls", 8),
         "error": outcome["error"],
         "cost": outcome["cost"],
@@ -339,7 +436,18 @@ def main() -> int:
     parser.add_argument("--case", help="only run cases whose id contains this")
     parser.add_argument("--arms", default="plugin,baseline",
                         help="plugin (custom context + skill), stock (Serena's own "
-                             "context, no skill), baseline (no MCP at all)")
+                             "context, no skill), baseline (no MCP at all), "
+                             "ecc (real plugin install, no --bare), control "
+                             "(same real-install mode with no plugin)")
+    parser.add_argument("--stock-doc-config", default="/tmp/mcp-semble-stock.json",
+                        help="MCP config for the `stock-doc` arm")
+    parser.add_argument("--proposed-doc-config", default="/tmp/mcp-semble-proposed.json",
+                        help="MCP config for the `proposed-doc` arm")
+    parser.add_argument("--plugin-under-test", "--ecc-plugin-dir", dest="plugin_under_test",
+                        help="directory of the plugin to load for the `under-test` arm")
+    parser.add_argument("--isolated-home",
+                        help="throwaway CLAUDE_CONFIG_DIR for the real-install arms "
+                             "(default: a fresh temp dir per run)")
     parser.add_argument("--timeout", type=int, default=420)
     parser.add_argument("--max-cost-usd", type=float, default=5.0)
     parser.add_argument("--judge-model", default="haiku")
@@ -383,13 +491,33 @@ def main() -> int:
 
     arms = [a.strip() for a in args.arms.split(",") if a.strip()]
     tmp = Path(tempfile.mkdtemp(prefix="lcn-eval-"))
+
+    global PLUGIN_UNDER_TEST, ISOLATED_HOME
+    if set(REAL_INSTALL_ARMS) & set(arms):
+        ISOLATED_HOME = Path(args.isolated_home) if args.isolated_home else (
+            tmp / "isolated-home")
+        ISOLATED_HOME.mkdir(parents=True, exist_ok=True)
+        if {"under-test", "ecc"} & set(arms):
+            if not args.plugin_under_test:
+                print("--plugin-under-test is required for the `under-test` arm")
+                return 2
+            PLUGIN_UNDER_TEST = Path(args.plugin_under_test).resolve()
+            if not (PLUGIN_UNDER_TEST / ".claude-plugin" / "plugin.json").is_file():
+                print(f"no .claude-plugin/plugin.json under {PLUGIN_UNDER_TEST}")
+                return 2
     empty_config = tmp / "mcp-empty.json"
     empty_config.write_text(json.dumps({"mcpServers": {}}))
     configs = {
         "plugin": resolved_mcp_config(tmp),
         "stock": resolved_mcp_config(tmp, "claude-code"),
         "empty": empty_config,
+        "stock-doc": Path(args.stock_doc_config),
+        "proposed-doc": Path(args.proposed_doc_config),
     }
+    for a in DOCSTRING_ARMS:
+        if a in arms and not configs[a].is_file():
+            print(f"missing MCP config for arm {a}: {configs[a]}")
+            return 2
 
     # Hashing a large repository is slow, and nothing may mutate it anyway.
     fingerprint_before = None if args.repo else fixture_fingerprint()
@@ -433,6 +561,8 @@ def main() -> int:
                         flags.append(f"FILE CHECK FAILED: {badf[0][:70]}")
                     if not s["within_budget"]:
                         flags.append(f"{s['calls']} calls over budget")
+                    if s["orch_calls"]:
+                        flags.append(f"orch {s['orch_tools']}")
                 print(f"  {arm:9s} run{run}: {s['calls']} calls  ${s['cost']:.4f}  " + "; ".join(flags))
 
     if fingerprint_before is not None and fixture_fingerprint() != fingerprint_before:
@@ -449,7 +579,8 @@ def main() -> int:
 
     header = (f"  {'arm':9s} {'route':>7s} {'tool':>6s} {'evidence':>9s} "
               f"{'claims':>7s} {'judged':>7s} {'files':>7s} {'budget':>7s} "
-              f"{'calls':>6s} {'wall_s':>7s} {'cost$':>8s}")
+              f"{'calls':>6s} {'orch':>5s} {'loc':>6s} {'tok_in':>9s} "
+              f"{'wall_s':>7s} {'cost$':>8s}")
     print(header)
     summary = {}
     for arm in arms:
@@ -468,6 +599,10 @@ def main() -> int:
             "wall_s": sum(r["duration_ms"] for r in rows) / n / 1000,
             "api_s": sum(r["api_ms"] for r in rows) / n / 1000,
             "tokens_out": sum(r["tokens_out"] for r in rows) / n,
+            "tokens_in": sum(r["tokens_in"] for r in rows) / n,
+            "orch_calls": sum(r["orch_calls"] for r in rows) / n,
+            "loc_added": (sum(r["loc_added"] for r in rows if r["loc_added"] >= 0)
+                          / max(1, sum(1 for r in rows if r["loc_added"] >= 0))),
             "cost": sum(r["cost"] for r in rows) / n,
         }
         file_rows = [r for r in rows if r.get("files_ok") is not None]
@@ -482,7 +617,40 @@ def main() -> int:
         print(f"  {arm:9s} {stats['route']:>7.0%} {stats['tool_used']:>6.0%} "
               f"{stats['evidence']:>9.0%} {stats['claims']:>7.0%} {judged:>7s} "
               f"{files:>7s} {stats['budget']:>7.0%} {stats['calls']:>6.1f} "
+              f"{stats['orch_calls']:>5.1f} {stats['loc_added']:>6.0f} "
+              f"{stats['tokens_in']:>9,.0f} "
               f"{stats['wall_s']:>7.1f} {stats['cost']:>8.4f}")
+
+    if "proposed-doc" in summary and "stock-doc" in summary:
+        print("\n  ablation delta (proposed-doc - stock-doc):")
+        print("  Same corpus, same prebuilt index, same semble build. The two arms differ")
+        print("  by one docstring, so every delta below is the wording and nothing else.")
+        for key in ("route", "tool_used", "evidence", "claims", "judged"):
+            if summary["proposed-doc"][key] != summary["proposed-doc"][key]:
+                continue
+            d = summary["proposed-doc"][key] - summary["stock-doc"][key]
+            print(f"    {key:9s} {d:+.0%}")
+        for key, fmt in (("calls","+.1f"), ("tokens_in","+,.0f"), ("cost","+.4f")):
+            print(f"    {key:9s} {summary['proposed-doc'][key] - summary['stock-doc'][key]:{fmt}}")
+
+    probe = "under-test" if "under-test" in summary else "ecc"
+    if probe in summary and "control" in summary:
+        print(f"\n  ablation delta ({probe} - control):")
+        print("  Both arms run the same real-install mode against the same corpus with")
+        print("  the same allowed tools. The only difference is --plugin-dir, so every")
+        print("  delta below is the plugin's own contribution.")
+        for key in ("route", "evidence", "claims", "judged", "budget"):
+            if summary[probe][key] != summary[probe][key]:
+                continue
+            print(f"    {key:9s} {summary['ecc'][key] - summary['control'][key]:+.0%}")
+        for key, fmt in (("calls", "+.1f"), ("orch_calls", "+.1f"),
+                         ("tokens_in", "+,.0f"), ("wall_s", "+.1f"),
+                         ("cost", "+.4f")):
+            d = summary[probe][key] - summary["control"][key]
+            print(f"    {key:9s} {d:{fmt}}")
+        ratio = (summary[probe]["tokens_in"] / summary["control"]["tokens_in"]
+                 if summary["control"]["tokens_in"] else float("nan"))
+        print(f"    {'tok ratio':9s} {ratio:.2f}x")
 
     if "plugin" in summary and "baseline" in summary:
         print("\n  ablation delta (plugin - baseline):")
