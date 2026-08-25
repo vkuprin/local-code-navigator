@@ -1,0 +1,77 @@
+# Does semantic search find things a text search cannot?
+#
+# The earlier discovery case did not answer this: its target file carried a docstring
+# containing the very words the question used, so the baseline solved it by guessing a
+# text query. These four ask about behaviour by describing what it does, in wording
+# taken from the domain rather than from the source, across a spread of difficulty.
+#
+# Run against a frozen snapshot:
+#   --cases evals/cases-semble.yaml --repo /tmp/lcn-corpus/changedetectionio
+#   --arms plugin,baseline
+#
+# `stock` is not a useful arm here: it also carries Semble, so it cannot isolate it.
+
+- id: semble-circuit-breaker
+  tags: [discovery]
+  # Ground truth: store/sqlite_db.py:418 watch_quality_circuit_open -- suppresses AI
+  # remediation for an hour once five same-error events land inside ten minutes.
+  # The implementation says "circuit", a well-known pattern name, so a lucky guess is
+  # possible. That is part of what is being measured.
+  prompt: >-
+    After several automated fixes fail one after another, this codebase deliberately
+    stops trying for a while instead of retrying forever. Where is that decision made?
+    Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["sqlite_db.py", "watch_quality_circuit_open"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: semble-session-age
+  tags: [discovery]
+  # Ground truth: browser_steps/browser_steps.py:430 has_expired -- ten minutes by
+  # default, overridable via BROWSER_STEPS_MAX_AGE_SECONDS.
+  prompt: >-
+    A browser automation session is thrown away once it gets too old. How old is too
+    old, and where is that check implemented? Name the file and the function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["browser_steps.py", "has_expired"]
+  must_exclude: []
+  max_tool_calls: 10
+
+# BROKEN CASE -- kept as a record, excluded from conclusions.
+#
+# The question has at least three defensible answers in this codebase:
+# _deduplicate_prices (collapses duplicate jsonpath matches), parse_currency
+# (normalises "$19.99" / "19,99" to a float), and query_price_availability (the
+# extraction path above both). Scoring only the first marked correct answers wrong.
+# A discovery case is only valid when exactly one answer fits the words used.
+- id: semble-price-collapse
+  tags: [discovery, broken]
+  # Ground truth: processors/restock_diff/processor.py:37 _deduplicate_prices.
+  # The question avoids the literal sample values that appear in its docstring.
+  prompt: >-
+    One product page can report what is really the same price several times, written
+    differently each time — with a currency symbol, without one, as a number, as text.
+    Where are those folded down to a single value? Name the function.
+    # See the note above: this prompt is ambiguous and its result is not evidence.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["_deduplicate_prices"]
+  must_exclude: []
+  max_tool_calls: 10
+
+- id: semble-readonly-quota
+  tags: [discovery]
+  # Ground truth: flask_app.py:251 _dynamic_daily_limit -- GET requests get a loose
+  # cap so an open dashboard does not consume the plan's daily budget.
+  prompt: >-
+    Requests that only read data are not charged against a customer's daily allowance,
+    while requests that change something are. Where is that distinction made? Name the
+    function.
+  expect_first_route: semble
+  expect_tools: []
+  must_include: ["_dynamic_daily_limit"]
+  must_exclude: []
+  max_tool_calls: 10

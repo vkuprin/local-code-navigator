@@ -1,5 +1,51 @@
 # Navigation benchmarks
 
+## Semantic search: the one thing that held up
+
+Serena was removed on measurement. Semble was tested separately, because the earlier
+discovery case had been solved by the baseline guessing a text query from words that
+happened to sit in the target file's docstring — that case measured "is it greppable",
+not "is semantic search useful".
+
+Four questions phrased from the domain rather than from the source, `sonnet`, 3 runs
+per arm. One turned out to be badly written and is excluded (see below), leaving three:
+
+| arm | found the right code | mean calls | cost |
+|---|---:|---:|---:|
+| with Semble | **100%** | **3.6** | $0.0367 |
+| built-in search only | 78% | 7.0 | $0.0452 |
+
+The decisive case was `semble-readonly-quota`: *"requests that only read data are not
+charged against a customer's daily allowance, while requests that change something
+are — where is that distinction made?"* The answer is `_dynamic_daily_limit` in
+`flask_app.py`. Nothing in that function contains the words a person would use to ask
+the question.
+
+- With Semble: correct 3 of 3, in 2 tool calls.
+- Without: correct 1 of 3, after 7 and 12 calls. Both failures confidently named
+  `api/ChatLimit.py` — a plausible-looking file about rate limits that is not the
+  answer.
+
+That is the shape of the failure semantic search prevents: not slowness, but a
+confident wrong answer, because the right code cannot be reached from the words in the
+question.
+
+Two cases were solved by both arms — `watch_quality_circuit_open` (the name contains
+"circuit", a guessable pattern name) and `has_expired`. So the advantage is real but
+narrow: it appears when naming and vocabulary diverge, and disappears when the code
+happens to be named after what it does.
+
+### The excluded case, and why
+
+`semble-price-collapse` asked where differently-formatted prices are folded into one
+value. This codebase has at least three defensible answers — `_deduplicate_prices`,
+`parse_currency`, and `query_price_availability` — and the rubric scored only the
+first. The plugin arm was marked wrong twice for naming the other two, which are
+correct code. The case is kept in `evals/cases-semble.yaml`, tagged `broken`, as a
+reminder: a discovery case is only valid when exactly one answer fits the words used.
+
+---
+
 ## Headline: the fixture result did not survive a real repository
 
 Everything below the next heading was measured on a nine-file synthetic fixture with
